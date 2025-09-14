@@ -112,6 +112,15 @@ class Settings(BaseSettings):
         description="Задержка между повторами в секундах"
     )
     
+    # =============================================================================
+    # ДОПОЛНИТЕЛЬНЫЕ НАСТРОЙКИ OLLAMA
+    # =============================================================================
+    
+    ollama_auto_pull: bool = Field(True, env="OLLAMA_AUTO_PULL", description="Автоматическое скачивание модели при запуске")
+    ollama_timeout_sec: int = Field(120, env="OLLAMA_TIMEOUT_SEC", description="Таймаут для Ollama запросов в секундах")
+    ollama_num_predict: int = Field(2000, env="OLLAMA_NUM_PREDICT", description="Количество токенов для генерации ответа")
+    ollama_temperature: float = Field(0.1, env="OLLAMA_TEMPERATURE", description="Температура для генерации")
+    
     class Config:
         """Конфигурация Pydantic."""
         env_file = ".env"

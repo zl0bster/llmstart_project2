@@ -7,6 +7,7 @@ from aiogram.filters import Command
 
 from app.clients.llm_client import OpenRouterLLMClient
 from app.clients.lmstudio_client import LMStudioLLMClient
+from app.clients.ollama_client import OllamaLLMClient
 from app.services.session_manager import SessionManager
 from app.bot.keyboards import (
     get_validation_keyboard, 
@@ -42,6 +43,16 @@ def init_llm_client():
                 model=settings.text_model
             )
             logging.info(f"OpenRouter клиент инициализирован с моделью {settings.text_model}")
+        elif settings.llm_provider == "ollama":
+            llm_client = OllamaLLMClient(
+                base_url=settings.ollama_base_url,
+                model=settings.text_model,
+                auto_pull=settings.ollama_auto_pull,
+                timeout_sec=settings.ollama_timeout_sec,
+                num_predict=settings.ollama_num_predict,
+                temperature=settings.ollama_temperature
+            )
+            logging.info(f"Ollama клиент инициализирован с моделью {settings.text_model}")
         else:
             logging.error(f"Не удалось инициализировать LLM клиент. Провайдер: {settings.llm_provider}")
 
@@ -125,7 +136,7 @@ async def handle_confirm_data(callback: CallbackQuery) -> None:
     if orders:
         # TODO: В итерации 3 здесь будет сохранение в БД
         orders_text = "\n".join([
-            f"• Заказ #{order.order_id}: {order.status} - {order.comment or 'без комментария'}"
+            f"• Заказ #{order.order_id}: {order.status.value if order.status else 'не указан'} - {order.comment or 'без комментария'}"
             for order in orders
         ])
         

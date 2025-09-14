@@ -1,21 +1,5 @@
 # Основные зависимости для OTK Assistant
 
-# Telegram Bot
-aiogram==3.4.1
-
-# Конфигурация и валидация
-pydantic==2.5.2
-pydantic-settings==2.1.0
-python-dotenv==1.0.0
-
-# База данных
-sqlalchemy==2.0.25
-alembic==1.13.1
-
-# HTTP клиенты
-httpx==0.26.0
-aiohttp==3.9.1
-
 # LLM и AI
 openai>=1.0.0
 langchain>=0.1.0
@@ -26,3 +10,21 @@ structlog==23.2.0
 
 # Утилиты
 python-multipart==0.0.6
+
+# База данных
+sqlalchemy==2.0.25
+alembic==1.13.1
+
+# HTTP клиенты
+httpx==0.26.0
+aiohttp==3.9.1
+
+# Telegram Bot
+aiogram==3.4.1
+
+# Конфигурация и валидация
+pydantic==2.5.2
+pydantic-settings==2.1.0
+python-dotenv==1.0.0
+
+

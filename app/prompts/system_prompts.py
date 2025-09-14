@@ -106,7 +106,9 @@ def format_orders_for_validation(orders: list) -> str:
     
     for order in orders:
         result += f"**Заказ #{order.order_id}:**\n"
-        result += f"• Статус: `{order.status or 'не указан'}`\n"
+        # Получаем значение статуса (не enum объект)
+        status_value = order.status.value if order.status else 'не указан'
+        result += f"• Статус: `{status_value}`\n"
         if order.comment:
             result += f"• Комментарий: {order.comment}\n"
         result += "\n"
