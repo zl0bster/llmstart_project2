@@ -82,7 +82,9 @@ otk-assistant/
 │   │   └── media_processor.py # Конвертация медиа в текст
 │   ├── clients/             # Внешние API клиенты
 │   │   ├── __init__.py
+│   │   ├── base_client.py   # Базовый интерфейс клиента
 │   │   ├── llm_client.py    # Работа с LLM через OpenRouter
+│   │   ├── lmstudio_client.py # Работа с LLM через LM Studio
 │   │   ├── vision_client.py # Анализ фотографий
 │   │   └── speech_client.py # Обработка голосовых сообщений
 │   ├── models/              # Модели данных
@@ -93,6 +95,9 @@ otk-assistant/
 │   │   ├── __init__.py
 │   │   ├── config.py        # Настройки
 │   │   └── database.py      # Подключение к БД
+│   ├── prompts/             # Системные промпты для LLM
+│   │   ├── __init__.py
+│   │   └── system_prompts.py # Системные промпты
 │   └── utils/               # Утилиты
 │       ├── __init__.py
 │       └── helpers.py
@@ -109,10 +114,9 @@ otk-assistant/
 ├── tests/                   # Тесты
 ├── docker/                  # Docker файлы
 ├── docs/                    # Документация
-├── prompts/                 # Шаблоны промптов для LLM
-│   ├── __init__.py
-│   ├── system_prompts.py    # Системные промпты
-│   └── templates/           # Шаблоны для разных типов проверок
+├── prompts/                 # Текстовые шаблоны промптов для LLM
+│   ├── templates/           # Шаблоны для разных типов проверок
+│   └── README.md            # Правила и структура промптов
 ├── .env                     # Переменные окружения
 ├── .env.example             # Пример переменных окружения
 ├── requirements.txt         # Зависимости

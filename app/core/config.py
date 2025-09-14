@@ -47,6 +47,11 @@ class Settings(BaseSettings):
         env="CACHE_AUDIO_DIR", 
         description="Кэш аудио файлов"
     )
+    prompts_dir: str = Field(
+        "prompts/", 
+        env="PROMPTS_DIR", 
+        description="Директория с текстовыми промптами"
+    )
     
     # =============================================================================
     # ОГРАНИЧЕНИЯ МЕДИА

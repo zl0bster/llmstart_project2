@@ -83,6 +83,15 @@ class LMStudioLLMClient(BaseLLMClient):
                 max_tokens=2000
             )
             
+            # Проверяем, что ответ корректный
+            if not response.choices or len(response.choices) == 0:
+                logger.error("LM Studio вернул пустой ответ")
+                raise Exception("LM Studio вернул пустой ответ")
+            
+            if not response.choices[0].message or not response.choices[0].message.content:
+                logger.error("LM Studio вернул ответ без содержимого")
+                raise Exception("LM Studio вернул ответ без содержимого")
+            
             llm_response_text = response.choices[0].message.content
             logger.info(f"Получен ответ от LM Studio. Длина ответа: {len(llm_response_text)} символов")
             
@@ -93,6 +102,7 @@ class LMStudioLLMClient(BaseLLMClient):
                 return parsed_response
             except Exception as parse_error:
                 logger.error(f"Ошибка парсинга ответа LM Studio: {parse_error}")
+                logger.error(f"Тип ошибки: {type(parse_error).__name__}")
                 logger.error(f"Ответ LM Studio: {llm_response_text}")
                 
                 # Fallback: пытаемся извлечь JSON вручную
