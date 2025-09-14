@@ -326,7 +326,7 @@ dialogues:
 #### OpenRouter (облачные):
 - **GPT-3.5-turbo** - быстрая обработка текста
 - **GPT-4** - качественный анализ
-- **GPT-4 Vision** - анализ изображений
+- **GPT-4 Vision** - мультимодальная модель для анализа изображений
 - **Claude 3 Haiku** - альтернатива GPT
 - **Llama 3.1 8B** - бесплатная модель
 
@@ -343,6 +343,32 @@ dialogues:
 - **CodeLlama 7B** - для структурирования данных
 - **Phi-3 3.8B** - легковесная модель
 
+### Специализированные модели для медиа:
+
+#### Vision модели (анализ фотографий):
+- **GPT-4 Vision** - основной провайдер для анализа изображений
+- **Claude 3 Vision** - альтернатива через OpenRouter
+- **LLaVA** - локальная модель через Ollama (llava:7b)
+
+#### Speech модели (обработка голоса):
+- **OpenAI Whisper** - основной провайдер для транскрипции
+- **Whisper API** - облачная версия
+- **Whisper.cpp** - локальная версия через Ollama
+
+### Требования к файлам:
+
+#### Фотографии:
+- **Формат**: JPEG, PNG, WebP
+- **Максимальный размер**: 20MB
+- **Разрешение**: до 2048x2048 пикселей
+- **Минимальное качество**: читаемый текст на изображении
+
+#### Аудио:
+- **Формат**: MP3, WAV, M4A, OGG
+- **Максимальная длительность**: 25 минут
+- **Качество**: минимум 16kHz, моно
+- **Максимальный размер**: 25MB
+
 ### Обработка ошибок:
 - **Логирование всех ошибок** API
 - **Fallback сообщения** при сбоях
@@ -352,6 +378,15 @@ dialogues:
 - **Метрики расходов** по моделям
 - **Учет токенов** для каждого запроса
 - **Логирование стоимости** запросов
+
+### Детальное логирование LLM:
+- **Все запросы и ответы** в лог файл (Text, Vision, Speech)
+- **Время запроса и время ответа** для каждого API
+- **Количество токенов** в запросе/ответе
+- **Размер и результаты анализа** фотографий
+- **Длительность и результаты обработки** голоса
+- **chat_id пользователя** и номер сессии
+- **Логирование ошибок API** с деталями и кодами ответов 
 
 ### Структура клиентов:
 ```
@@ -507,10 +542,365 @@ logs/
 
 ---
 
-## Следующие разделы (к разработке):
+## Конфигурирование
 
-- Деплой
-- Подход к конфигурированию
-- Подход к логгированию
-- Подход к проектной документации
-- План разработки
+### Подход
+- **Единый источник правды**: `.env` + переменные окружения
+- **Валидатор настроек**: `app/core/config.py` (Pydantic BaseSettings)
+- **Приоритет**: ENV переменные > `.env` > значения по умолчанию
+- **Разделение секретов**: ключи API только в ENV/секретах, не в коде
+
+### Переменные окружения
+- **Бот и база**:
+  - `BOT_TOKEN` — токен Telegram бота (обязательно)
+  - `DATABASE_URL` — строка подключения (`sqlite:///data/otk_assistant.db` по умолчанию)
+  - `SESSION_TIMEOUT_MIN` — таймаут неактивной сессии в минутах (по умолчанию 15)
+- **Логи и кэш**:
+  - `LOG_LEVEL` — уровень логирования (`INFO` по умолчанию)
+  - `LOG_DIR` — директория логов (`logs/`)
+  - `LOG_CONSOLE` — вывод логов в консоль (`true`|`false`, по умолчанию `true`)
+  - `LOG_CONSOLE_FORMAT` — формат консоли: `plain` | `json` (по умолчанию `plain`)
+  - `CACHE_DIR` — корневая папка кэша (`cache/`)
+  - `CACHE_PHOTOS_DIR` — кэш фото (`cache/photos/`)
+  - `CACHE_AUDIO_DIR` — кэш аудио (`cache/audio/`)
+- **Ограничения медиа**:
+  - `MAX_IMAGE_MB` — макс. размер фото в МБ (20)
+  - `MAX_IMAGE_RES` — макс. разрешение фото (`2048x2048`)
+  - `MAX_AUDIO_MB` — макс. размер аудио в МБ (25)
+  - `MAX_AUDIO_MIN` — макс. длительность аудио в минутах (25)
+  - `AUDIO_MIN_SAMPLE_RATE` — мин. частота дискретизации (16000)
+  - `AUDIO_MONO` — приводить к моно (`true`|`false`)
+- **Провайдеры и модели**:
+  - `LLM_PROVIDER` — `openrouter` | `ollama` | `lmstudio`
+  - `TEXT_MODEL` — имя текстовой модели (напр. `gpt-4`, `llama3.1:8b`)
+  - `VISION_PROVIDER` — `openrouter` | `ollama`
+  - `VISION_MODEL` — `gpt-4-vision` | `claude-3-haiku-vision` | `llava:7b`
+  - `SPEECH_PROVIDER` — `whisper` | `whispercpp`
+  - `SPEECH_MODEL` — `whisper-1` | `base` | другое
+- **Ключи и доступ**:
+  - `OPENROUTER_API_KEY` — ключ для OpenRouter (если используется)
+  - `OPENAI_API_KEY` — для GPT-4 Vision/Whisper (если используется напрямую)
+  - `LMSTUDIO_BASE_URL` — URL локального LM Studio (по умолчанию `http://localhost:1234`)
+  - `OLLAMA_BASE_URL` — URL Ollama (по умолчанию `http://localhost:11434`)
+- **Сетевые параметры**:
+  - `HTTP_TIMEOUT_SEC` — таймаут HTTP запросов (30)
+  - `HTTP_RETRIES` — кол-во повторов при временных ошибках (2)
+  - `HTTP_RETRY_BACKOFF_SEC` — задержка между повторами (2)
+
+### Пример `.env.example`
+```
+# Бот и БД
+BOT_TOKEN=
+DATABASE_URL=sqlite:///data/otk_assistant.db
+SESSION_TIMEOUT_MIN=15
+
+# Логи и кэш
+LOG_LEVEL=INFO
+LOG_DIR=logs/
+LOG_CONSOLE=true
+LOG_CONSOLE_FORMAT=plain
+CACHE_DIR=cache/
+CACHE_PHOTOS_DIR=cache/photos/
+CACHE_AUDIO_DIR=cache/audio/
+
+# Ограничения медиа
+MAX_IMAGE_MB=20
+MAX_IMAGE_RES=2048x2048
+MAX_AUDIO_MB=25
+MAX_AUDIO_MIN=25
+AUDIO_MIN_SAMPLE_RATE=16000
+AUDIO_MONO=true
+
+# Провайдеры и модели
+LLM_PROVIDER=openrouter
+TEXT_MODEL=gpt-4
+VISION_PROVIDER=openrouter
+VISION_MODEL=gpt-4-vision
+SPEECH_PROVIDER=whisper
+SPEECH_MODEL=whisper-1
+
+# Ключи и доступ
+OPENROUTER_API_KEY=
+OPENAI_API_KEY=
+LMSTUDIO_BASE_URL=http://localhost:1234
+OLLAMA_BASE_URL=http://localhost:11434
+
+# Сеть
+HTTP_TIMEOUT_SEC=30
+HTTP_RETRIES=2
+HTTP_RETRY_BACKOFF_SEC=2
+```
+
+### Структура `app/core/config.py` (схема)
+```python
+from pydantic import BaseSettings, Field
+
+class Settings(BaseSettings):
+    bot_token: str = Field(..., env="BOT_TOKEN")
+    database_url: str = Field("sqlite:///data/otk_assistant.db", env="DATABASE_URL")
+    session_timeout_min: int = Field(15, env="SESSION_TIMEOUT_MIN")
+
+    log_level: str = Field("INFO", env="LOG_LEVEL")
+    log_dir: str = Field("logs/", env="LOG_DIR")
+    cache_dir: str = Field("cache/", env="CACHE_DIR")
+    cache_photos_dir: str = Field("cache/photos/", env="CACHE_PHOTOS_DIR")
+    cache_audio_dir: str = Field("cache/audio/", env="CACHE_AUDIO_DIR")
+
+    max_image_mb: int = Field(20, env="MAX_IMAGE_MB")
+    max_image_res: str = Field("2048x2048", env="MAX_IMAGE_RES")
+    max_audio_mb: int = Field(25, env="MAX_AUDIO_MB")
+    max_audio_min: int = Field(25, env="MAX_AUDIO_MIN")
+    audio_min_sample_rate: int = Field(16000, env="AUDIO_MIN_SAMPLE_RATE")
+    audio_mono: bool = Field(True, env="AUDIO_MONO")
+
+    llm_provider: str = Field("openrouter", env="LLM_PROVIDER")
+    text_model: str = Field("gpt-4", env="TEXT_MODEL")
+    vision_provider: str = Field("openrouter", env="VISION_PROVIDER")
+    vision_model: str = Field("gpt-4-vision", env="VISION_MODEL")
+    speech_provider: str = Field("whisper", env="SPEECH_PROVIDER")
+    speech_model: str = Field("whisper-1", env="SPEECH_MODEL")
+
+    openrouter_api_key: str | None = Field(None, env="OPENROUTER_API_KEY")
+    openai_api_key: str | None = Field(None, env="OPENAI_API_KEY")
+    lmstudio_base_url: str = Field("http://localhost:1234", env="LMSTUDIO_BASE_URL")
+    ollama_base_url: str = Field("http://localhost:11434", env="OLLAMA_BASE_URL")
+
+    http_timeout_sec: int = Field(30, env="HTTP_TIMEOUT_SEC")
+    http_retries: int = Field(2, env="HTTP_RETRIES")
+    http_retry_backoff_sec: int = Field(2, env="HTTP_RETRY_BACKOFF_SEC")
+
+    class Config:
+        env_file = ".env"
+```
+
+### Переключение провайдеров и моделей
+- Текст: `LLM_PROVIDER`=`openrouter` и `TEXT_MODEL`=`gpt-4`/`gpt-3.5-turbo` или `ollama` + `llama3.1:8b`
+- Фото: `VISION_PROVIDER`=`openrouter` + `VISION_MODEL`=`gpt-4-vision` или `ollama` + `llava:7b`
+- Голос: `SPEECH_PROVIDER`=`whisper` (`SPEECH_MODEL=whisper-1`) или `whispercpp` локально
+
+### Безопасность
+- `.env` не коммитится, используем `.env.example`
+- В проде (Railway) ключи задаются через панель переменных окружения
+- Логи не содержат сырые персональные данные; `chat_id` и `session_id` — разрешены
+
+### Проверка конфигурации при запуске
+- При старте приложение валидирует `.env` и пишет итоговую конфигурацию (без секретов) в `app.log`
+- Ошибки конфигурации логируются как `ERROR` и приводят к безопасному завершению
+
+---
+
+## Подход к логгированию
+
+### Принципы
+- **Полная трассируемость**: фиксируем ключевые события, параметры и результаты.
+- **Структурированность**: JSON Lines для удобного поиска/парсинга.
+- **Корреляция**: связываем события через `request_id`, `chat_id`, `session_id`, `llm_request_id`.
+- **Безопасность**: секреты маскируем; персональные данные логируем минимально необходимыми.
+
+### Формат и структура записей
+- Формат времени: ISO8601 с таймзоной, поле `ts`.
+- Базовые поля: `ts`, `level`, `logger`, `msg`, `request_id`.
+- Контекст пользователя: `chat_id`, `session_id`, `user_role`.
+- Технический контекст: `module`, `handler`, `endpoint`, `status_code`, `latency_ms`.
+
+### Корреляция запросов
+- `request_id` — генерируется на входе апдейта Telegram.
+- `session_id` — из Session Manager.
+- `llm_request_id` — для каждого вызова LLM/Vision/Speech API.
+
+### Файлы логов
+- `logs/app.log` — общие события приложения (INFO+).
+- `logs/error.log` — ошибки и критические инциденты (ERROR+).
+- `logs/llm.log` — запросы/ответы LLM API, метрики и ошибки.
+- `logs/user.log` — действия пользователей (команды, подтверждения, отчеты).
+
+### Уровни и правила
+- `DEBUG` — разработка; подробные детали обработки.
+- `INFO` — бизнес-события и успешные вызовы API с метриками.
+- `WARNING` — восстановимые сбои, ретраи.
+- `ERROR` — ошибки API/БД/парсинга, бизнес-ошибки.
+- `CRITICAL` — фатальные ошибки старта и конфигурации.
+
+### Поля для LLM/мультимодальных событий
+- Общее: `provider`, `model`, `api_latency_ms`, `total_latency_ms`, `status_code`.
+- Токены: `tokens_in`, `tokens_out`, `cost_usd` (если доступно).
+- Vision: `image_count`, `images_total_size_bytes`, `analysis_summary` (кратко, ≤512 символов).
+- Speech: `audio_duration_sec`, `audio_size_bytes`, `transcription_lang`.
+- Ошибки API: `error_type`, `error_message`, `response_body_snippet` (≤512 символов).
+
+### Политика приватности и маскировки
+- Маскируем: `api_key`, `Authorization`, токены доступа (`****`).
+- Текст и ответы LLM в `llm.log` можно усекать до 4KB поля: `input_truncated`, `output_truncated`.
+- Для медиа фиксируем только метаданные (пути, размеры, хэш), не бинарное содержимое.
+
+### Ротация и хранение
+- Ротация ежедневно, хранение 7 дней, архив в `logs/archived/`.
+- Размер одного файла — не более 10MB; при превышении — немедленная ротация.
+
+### Конфигурация
+- Управляется через ENV: `LOG_LEVEL`, `LOG_DIR` (см. раздел «Конфигурирование»).
+- Дополнительно (опционально): `LOG_JSON=true`, `LOG_DEBUG_SAMPLE_RATE=0.1` (семплинг DEBUG).
+
+### Примеры записей
+```json
+{"ts":"2025-09-14T10:15:30.123+03:00","level":"INFO","logger":"clients.llm","msg":"LLM request completed","request_id":"req-01H...","llm_request_id":"llm-abc123","chat_id":123456,"session_id":"s-9f8...","provider":"openrouter","model":"gpt-4-vision","tokens_in":256,"tokens_out":128,"api_latency_ms":842,"total_latency_ms":980,"status_code":200}
+```
+
+```json
+{"ts":"2025-09-14T10:15:31.987+03:00","level":"ERROR","logger":"clients.speech","msg":"Speech API failed","request_id":"req-01H...","llm_request_id":"sp-77a...","chat_id":123456,"session_id":"s-9f8...","provider":"whisper","model":"whisper-1","status_code":503,"error_type":"UpstreamUnavailable","error_message":"Service temporarily unavailable","response_body_snippet":"{\"error\":\"...\"}"}
+```
+
+### Пример консольного вывода (plain)
+```
+[2025-02-08 12:30:45] INFO | User 12345: received photo message
+[2025-02-08 12:30:46] INFO | Vision API request: analyzing food photo
+[2025-02-08 12:30:47] INFO | Vision API response: identified pizza, ~650 calories
+[2025-02-08 12:30:48] INFO | User profile loaded: goals=lose_weight, allergies=none
+[2025-02-08 12:30:49] INFO | LLM request with nutrition context: {...}
+[2025-02-08 12:30:50] INFO | LLM response: personalized recommendation
+[2025-02-08 12:30:51] INFO | Database updated: nutrition_log entry added
+```
+
+### Форматирование консоли
+- Шаблон: `[%(asctime)s] %(levelname)s | %(message)s`
+- Потоки: `INFO`/`DEBUG` → stdout, `WARNING`/`ERROR`/`CRITICAL` → stderr
+- Управление через ENV: `LOG_CONSOLE`, `LOG_CONSOLE_FORMAT` (см. «Конфигурирование»)
+
+### Интеграция в код
+- Инициализация логгера в `app/main.py` согласно `LOG_LEVEL` и `LOG_DIR`.
+- Middleware Telegram: проставляет `request_id`, `chat_id`, `session_id` в контекст.
+- Клиенты `llm_client.py`, `vision_client.py`, `speech_client.py`: логируют запрос/ответ, метрики и ошибки в `llm.log`.
+
+---
+
+## Деплой
+
+### Варианты развертывания:
+
+#### 1. **Railway.com** (основной вариант)
+- **Преимущества**: Простота, автоматический деплой из Git, встроенная база данных
+- **Настройка**: Подключение к GitHub репозиторию
+- **Переменные окружения**: Через веб-интерфейс Railway
+- **Масштабирование**: Автоматическое по нагрузке
+
+#### 2. **Локальное развертывание** (альтернативный вариант)
+- **Docker Compose**: Для разработки и тестирования
+- **Системные требования**: Linux/Windows с Docker
+- **Управление**: Через docker-compose команды
+
+### Процесс деплоя:
+
+#### Railway.com:
+1. **Подключение репозитория**: Связывание GitHub репозитория
+2. **Настройка переменных**: BOT_TOKEN, API_KEYS, DATABASE_URL
+3. **Автоматический деплой**: При push в main ветку
+4. **Мониторинг**: Через веб-интерфейс Railway
+
+#### Локальное развертывание:
+1. **Клонирование репозитория**
+2. **Настройка .env файла**
+3. **Запуск**: `docker-compose up -d`
+4. **Мониторинг**: Логи через `docker-compose logs`
+
+### Настройки деплоя:
+- **Домен**: Использование Railway subdomain (собственный домен не нужен)
+- **SSL**: Автоматический HTTPS от Railway
+- **Backup**: Еженедельные бэкапы базы данных + по запросу
+- **Мониторинг**: Внешние сервисы не требуются
+- **Обновления**: Ручные обновления (автоматические отключены)
+
+### Makefile команды:
+```bash
+make dev          # Запуск в режиме разработки (без Docker)
+make build        # Сборка Docker образа
+make run          # Запуск контейнера
+make stop         # Остановка контейнера
+make logs         # Просмотр логов контейнера
+make clean        # Очистка временных файлов и образов
+make test         # Запуск тестов
+make lint         # Проверка кода линтером
+make format       # Форматирование кода
+make install      # Установка зависимостей
+make db-migrate   # Применение миграций БД
+make db-reset     # Сброс базы данных
+make db-backup    # Создание бэкапа БД (архив в downloads/)
+make db-export    # Экспорт БД в CSV для пользователя (в downloads/)
+```
+
+### Простое решение:
+- **Railway.com** как основной вариант для продакшна
+- **Docker Compose** для локальной разработки и тестирования
+- **Makefile** для упрощения команд разработки
+- **Автоматический деплой** из main ветки
+- **Ручные бэкапы** еженедельно + по запросу
+- **Мониторинг** через встроенные инструменты Railway
+
+---
+
+
+## Подход к проектной документации
+
+### Принципы
+- Предельная лаконичность — только необходимое, без повторов.
+- Достаточность — всё для понимания, запуска и развертывания.
+- Непротиворечивость — единые источники правды, без дублирования.
+- Полнота настроек — все параметры и значения по умолчанию описаны.
+- Минимум файлов — объединяем там, где это разумно.
+- Перспектива наращивания функциональности — структура масштабируется без реорганизаций.
+
+### Перечень файлов документации (к созданию/обновлению)
+- README.md — обзор проекта, Quick Start, ссылки на ключевые документы.
+- docs/DEPLOYMENT.md — развертывание (локально и в облаке), переменные окружения для прод.
+- docs/vision.md — техническое видение, архитектура, конфигурация, логирование, сценарии.
+- .env.example — список переменных окружения с безопасными дефолтами.
+- prompts/README.md — правила и структура промптов, где хранить шаблоны.
+- docs/CHANGELOG.md — краткая история изменений по релизам (даты, версии, ключевые пункты).
+- docs/ROADMAP.md (опционально) — план развития функциональности на 1–2 итерации.
+- docs/SETUP.md (опционально) — детальная установка/обновление, если не хватает места в README.
+- docs/API.md (по мере появления) — описание REST/бот-команд, форматы запросов/ответов.
+
+Примечание: файл развертывания выносится в отдельный `docs/DEPLOYMENT.md`, чтобы не перегружать `README.md`.
+
+---
+
+## План разработки
+
+1. Базовый бот и конфигурация
+   - Инициализация aiogram, обработка /start и текста, валидация `.env`, базовое файловое и консольное логирование.
+   - Тест: бот отвечает на /start и эхо-сообщения; логи пишутся.
+
+2. Текстовый пайплайн (MVP LLM)
+   - Интеграция OpenRouter, системный промпт, парсинг ответа через Pydantic, цикл подтверждения.
+   - Тест: по тексту извлекаются заказы/статусы, есть подтверждение.
+
+3. Хранение данных и сессии
+   - SQLite/SQLAlchemy, модели users/inspections/dialogues, Session Manager, запись только после подтверждения.
+   - Тест: подтвержденные проверки сохраняются; история сессии доступна.
+
+4. Голосовой пайплайн
+   - Прием voice, сохранение в `cache/audio/`, Whisper транскрипция, передача в текстовый пайплайн.
+   - Тест: голос → текст → подтверждение → запись в БД.
+
+5. Фото пайплайн (Vision)
+   - Прием фото, сохранение в `cache/photos/`, GPT-4 Vision/LLaVA анализ, извлечение данных и передача в текстовый пайплайн.
+   - Тест: фото протокола → извлечение → подтверждение → запись в БД.
+
+6. Отчеты и экспорт
+   - `report_service`: 4 предопределенных отчета (сводки + CSV), команды бота для запроса.
+   - Тест: админ получает сводку и CSV за выбранный период.
+
+7. Устойчивость и наблюдаемость
+   - Retry, обработка ошибок API, расширенное логирование (время, токены, размеры, длительности), ротация логов.
+   - Тест: искусственно вызвать сбои и увидеть корректное восстановление/логи.
+
+8. Переключаемые провайдеры и модели
+   - ENV-переключение OpenRouter/Ollama/LM Studio, Vision/Speech провайдеров, дефолты и фоллбеки.
+   - Тест: смена ENV приводит к использованию другой модели без правок кода.
+
+9. Развертывание
+   - Docker Compose локально, подготовка `docs/DEPLOYMENT.md`, проверка Railway.
+   - Тест: запуск в Docker и (опционально) развертывание в Railway.
+
+10. Полировка и UX
+   - Клавиатуры, улучшение промптов/валидации, роли пользователей, оптимизации производительности.
+   - Тест: end-to-end сценарии (текст/голос/фото/отчеты) проходят стабильно.
