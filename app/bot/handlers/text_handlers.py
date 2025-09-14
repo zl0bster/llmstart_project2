@@ -6,6 +6,7 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command
 
 from app.clients.llm_client import OpenRouterLLMClient
+from app.clients.lmstudio_client import LMStudioLLMClient
 from app.services.session_manager import SessionManager
 from app.bot.keyboards import (
     get_validation_keyboard, 
@@ -28,12 +29,21 @@ session_manager = SessionManager(timeout_minutes=settings.session_timeout_min)
 def init_llm_client():
     """Инициализация LLM клиента."""
     global llm_client
-    if llm_client is None and settings.openrouter_api_key:
-        llm_client = OpenRouterLLMClient(
-            api_key=settings.openrouter_api_key,
-            model=settings.text_model
-        )
-        logging.info(f"LLM клиент инициализирован с моделью {settings.text_model}")
+    if llm_client is None:
+        if settings.llm_provider == "lmstudio":
+            llm_client = LMStudioLLMClient(
+                base_url=settings.lmstudio_base_url,
+                model=settings.text_model
+            )
+            logging.info(f"LM Studio клиент инициализирован с моделью {settings.text_model}")
+        elif settings.llm_provider == "openrouter" and settings.openrouter_api_key:
+            llm_client = OpenRouterLLMClient(
+                api_key=settings.openrouter_api_key,
+                model=settings.text_model
+            )
+            logging.info(f"OpenRouter клиент инициализирован с моделью {settings.text_model}")
+        else:
+            logging.error(f"Не удалось инициализировать LLM клиент. Провайдер: {settings.llm_provider}")
 
 
 @router.message(F.text)

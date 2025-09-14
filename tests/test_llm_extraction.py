@@ -13,6 +13,7 @@ from typing import List
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from app.clients.llm_client import OpenRouterLLMClient
+from app.clients.lmstudio_client import LMStudioLLMClient
 from app.models.schemas import LLMResponse, OrderData, StatusEnum
 
 # Настройка логирования
@@ -46,16 +47,25 @@ TEST_CASES = [
 def test_llm_extraction():
     """Тестирует извлечение данных через LLM."""
     
-    # Проверяем наличие API ключа
-    api_key = os.getenv("OPENROUTER_API_KEY")
-    if not api_key:
-        logger.error("OPENROUTER_API_KEY не установлен. Установите переменную окружения для тестирования.")
-        return False
+    # Определяем провайдера и инициализируем клиент
+    provider = os.getenv("LLM_PROVIDER", "lmstudio")
+    model = os.getenv("TEXT_MODEL", "openai/gpt-oss-20b")
     
-    # Инициализируем клиент
     try:
-        client = OpenRouterLLMClient(api_key=api_key, model="gpt-4")
-        logger.info("LLM клиент инициализирован успешно")
+        if provider == "lmstudio":
+            base_url = os.getenv("LMSTUDIO_BASE_URL", "http://localhost:1234")
+            client = LMStudioLLMClient(base_url=base_url, model=model)
+            logger.info(f"LM Studio клиент инициализирован: {base_url}, модель: {model}")
+        elif provider == "openrouter":
+            api_key = os.getenv("OPENROUTER_API_KEY")
+            if not api_key:
+                logger.error("OPENROUTER_API_KEY не установлен для провайдера openrouter")
+                return False
+            client = OpenRouterLLMClient(api_key=api_key, model=model)
+            logger.info(f"OpenRouter клиент инициализирован с моделью {model}")
+        else:
+            logger.error(f"Неподдерживаемый провайдер: {provider}")
+            return False
     except Exception as e:
         logger.error(f"Ошибка инициализации LLM клиента: {e}")
         return False
@@ -101,12 +111,26 @@ def test_llm_extraction():
 def test_specific_cases():
     """Тестирует конкретные случаи из примеров."""
     
-    api_key = os.getenv("OPENROUTER_API_KEY")
-    if not api_key:
-        logger.error("OPENROUTER_API_KEY не установлен")
-        return False
+    # Определяем провайдера и инициализируем клиент
+    provider = os.getenv("LLM_PROVIDER", "lmstudio")
+    model = os.getenv("TEXT_MODEL", "openai/gpt-oss-20b")
     
-    client = OpenRouterLLMClient(api_key=api_key, model="gpt-4")
+    try:
+        if provider == "lmstudio":
+            base_url = os.getenv("LMSTUDIO_BASE_URL", "http://localhost:1234")
+            client = LMStudioLLMClient(base_url=base_url, model=model)
+        elif provider == "openrouter":
+            api_key = os.getenv("OPENROUTER_API_KEY")
+            if not api_key:
+                logger.error("OPENROUTER_API_KEY не установлен")
+                return False
+            client = OpenRouterLLMClient(api_key=api_key, model=model)
+        else:
+            logger.error(f"Неподдерживаемый провайдер: {provider}")
+            return False
+    except Exception as e:
+        logger.error(f"Ошибка инициализации клиента: {e}")
+        return False
     
     # Тест 1: Простой случай с одним заказом
     logger.info("\n=== Тест 1: Простой случай ===")
