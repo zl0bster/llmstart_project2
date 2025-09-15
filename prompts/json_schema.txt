@@ -9,3 +9,4 @@
   "requires_correction": "boolean",
   "clarification_question": "string (опционально, только если requires_correction=true)"
 }
+

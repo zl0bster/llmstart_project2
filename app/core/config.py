@@ -89,6 +89,7 @@ class Settings(BaseSettings):
     
     openrouter_api_key: Optional[str] = Field(None, env="OPENROUTER_API_KEY", description="API ключ для OpenRouter")
     openai_api_key: Optional[str] = Field(None, env="OPENAI_API_KEY", description="API ключ для OpenAI")
+    whisperapi_api_key: Optional[str] = Field(None, env="WHISPERAPI_API_KEY", description="API ключ для WhisperAPI.com")
     lmstudio_base_url: str = Field(
         "http://localhost:1234", 
         env="LMSTUDIO_BASE_URL", 

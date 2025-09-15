@@ -125,6 +125,125 @@ async def handle_text_message(message: Message) -> None:
         )
 
 
+async def process_text_with_llm(
+    user_id: int, 
+    chat_id: int, 
+    session_id: str, 
+    text: str, 
+    original_message: Message, 
+    processing_message: Message = None,
+    is_voice_transcription: bool = False
+) -> None:
+    """
+    Обрабатывает текст через LLM (для использования из разных обработчиков).
+    
+    Args:
+        user_id: ID пользователя
+        chat_id: ID чата
+        session_id: ID сессии
+        text: Текст для обработки
+        original_message: Оригинальное сообщение
+        processing_message: Сообщение о статусе обработки
+        is_voice_transcription: Флаг что текст получен из голосового сообщения
+    """
+    try:
+        # Инициализируем LLM клиент если нужно
+        if not init_llm_client():
+            error_text = (
+                "❌ <b>Ошибка обработки</b>\n\n"
+                "LLM сервис временно недоступен. Пожалуйста, попробуйте позже."
+            )
+            
+            if processing_message:
+                await processing_message.edit_text(error_text, parse_mode="HTML")
+            else:
+                await original_message.answer(error_text, parse_mode="HTML")
+            return
+        
+        # Переводим в состояние обработки
+        from app.services.state_machine import StateMachine
+        state_machine = StateMachine()
+        state_machine.transition_to_state(user_id, BotState.PROCESSING)
+        
+        # Создаем сообщение о начале обработки если его нет
+        if not processing_message:
+            prefix = "🎤 Обрабатываю транскрипцию..." if is_voice_transcription else "💬 Обрабатываю сообщение..."
+            processing_message = await original_message.answer(
+                f"{prefix}\n\n⏳ Анализирую данные через LLM...",
+                reply_markup=get_processing_keyboard(),
+                parse_mode="HTML"
+            )
+        
+        # Получаем историю сессии для контекста
+        session_history = session_manager.get_session_history(session_id)
+        
+        # Обрабатываем через LLM
+        llm_response = llm_client.process_text(text, session_history)
+        
+        # Сохраняем сообщение в историю сессии
+        prefix = "[ГОЛОС -> ТЕКСТ]" if is_voice_transcription else "[ТЕКСТ]"
+        session_manager.add_message(session_id, f"{prefix}: {text}")
+        session_manager.add_message(session_id, f"[LLM]: {llm_response.model_dump_json()}")
+        
+        logging.info(f"LLM обработка для пользователя {user_id}: "
+                    f"извлечено {len(llm_response.orders)} заказов, "
+                    f"требует уточнения: {llm_response.requires_correction}")
+        
+        if llm_response.requires_correction and llm_response.clarification_question:
+            # Требуется уточнение
+            state_machine.transition_to_state(user_id, BotState.CLARIFICATION)
+            
+            await processing_message.edit_text(
+                f"❓ <b>Требуется уточнение</b>\n\n{llm_response.clarification_question}",
+                parse_mode="HTML",
+                reply_markup=get_clarification_keyboard()
+            )
+        else:
+            # Данные извлечены успешно
+            if llm_response.orders:
+                # Сохраняем извлеченные заказы в сессии
+                session_manager.set_extracted_orders(user_id, llm_response.orders)
+                
+                # Переводим в состояние подтверждения
+                state_machine.transition_to_state(user_id, BotState.CONFIRMATION)
+                
+                # Форматируем данные для подтверждения
+                validation_text = format_orders_for_validation(llm_response.orders)
+                
+                # Добавляем информацию об источнике данных
+                source_info = "🎤 <i>Данные получены из голосового сообщения</i>\n\n" if is_voice_transcription else ""
+                
+                await processing_message.edit_text(
+                    source_info + validation_text,
+                    parse_mode="HTML",
+                    reply_markup=get_confirmation_keyboard()
+                )
+            else:
+                state_machine.transition_to_state(user_id, BotState.IDLE)
+                
+                source_info = "голосового сообщения" if is_voice_transcription else "текста"
+                await processing_message.edit_text(
+                    f"❌ Не удалось извлечь данные о заказах из {source_info}. "
+                    "Пожалуйста, опишите отчет еще раз.",
+                    parse_mode="HTML"
+                )
+    
+    except Exception as e:
+        logging.error(f"Ошибка при обработке текста через LLM: {e}")
+        
+        # Переводим в idle состояние
+        from app.services.state_machine import StateMachine
+        state_machine = StateMachine()
+        state_machine.transition_to_state(user_id, BotState.IDLE)
+        
+        error_text = "❌ Произошла ошибка при обработке. Попробуйте еще раз."
+        
+        if processing_message:
+            await processing_message.edit_text(error_text)
+        else:
+            await original_message.answer(error_text)
+
+
 @router.callback_query(F.data == "confirm_data")
 async def handle_confirm_data(callback: CallbackQuery) -> None:
     """Обработчик подтверждения данных."""

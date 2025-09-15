@@ -33,9 +33,11 @@ class OrderData(BaseModel):
         description="Номер заказа, строка из 4-5 цифр, извлеченная из текста"
     )
     status: Optional[StatusEnum] = Field(
+        default=None,
         description="Статус проверки изделия"
     )
     comment: Optional[str] = Field(
+        default=None,
         description="Комментарий контролера к статусу"
     )
 
