@@ -89,6 +89,16 @@ def get_json_schema() -> str:
     return _load_prompt_file("json_schema.txt")
 
 
+def get_vision_prompt() -> str:
+    """
+    Возвращает промпт для анализа изображений протоколов.
+    
+    Returns:
+        str: Промпт для Vision API анализа протоколов
+    """
+    return _load_prompt_file("vision_prompt.txt")
+
+
 def clear_prompt_cache() -> None:
     """
     Очищает кэш загруженных промптов.

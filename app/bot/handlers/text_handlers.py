@@ -132,7 +132,8 @@ async def process_text_with_llm(
     text: str, 
     original_message: Message, 
     processing_message: Message = None,
-    is_voice_transcription: bool = False
+    is_voice_transcription: bool = False,
+    is_photo_extraction: bool = False
 ) -> None:
     """
     Обрабатывает текст через LLM (для использования из разных обработчиков).
@@ -167,7 +168,12 @@ async def process_text_with_llm(
         
         # Создаем сообщение о начале обработки если его нет
         if not processing_message:
-            prefix = "🎤 Обрабатываю транскрипцию..." if is_voice_transcription else "💬 Обрабатываю сообщение..."
+            if is_voice_transcription:
+                prefix = "🎤 Обрабатываю транскрипцию..."
+            elif is_photo_extraction:
+                prefix = "📸 Обрабатываю извлеченный текст..."
+            else:
+                prefix = "💬 Обрабатываю сообщение..."
             processing_message = await original_message.answer(
                 f"{prefix}\n\n⏳ Анализирую данные через LLM...",
                 reply_markup=get_processing_keyboard(),
@@ -181,7 +187,12 @@ async def process_text_with_llm(
         llm_response = llm_client.process_text(text, session_history)
         
         # Сохраняем сообщение в историю сессии
-        prefix = "[ГОЛОС -> ТЕКСТ]" if is_voice_transcription else "[ТЕКСТ]"
+        if is_voice_transcription:
+            prefix = "[ГОЛОС -> ТЕКСТ]"
+        elif is_photo_extraction:
+            prefix = "[ФОТО -> ТЕКСТ]"
+        else:
+            prefix = "[ТЕКСТ]"
         session_manager.add_message(session_id, f"{prefix}: {text}")
         session_manager.add_message(session_id, f"[LLM]: {llm_response.model_dump_json()}")
         
@@ -211,7 +222,12 @@ async def process_text_with_llm(
                 validation_text = format_orders_for_validation(llm_response.orders)
                 
                 # Добавляем информацию об источнике данных
-                source_info = "🎤 <i>Данные получены из голосового сообщения</i>\n\n" if is_voice_transcription else ""
+                if is_voice_transcription:
+                    source_info = "🎤 <i>Данные получены из голосового сообщения</i>\n\n"
+                elif is_photo_extraction:
+                    source_info = "📸 <i>Данные получены из изображения</i>\n\n"
+                else:
+                    source_info = ""
                 
                 await processing_message.edit_text(
                     source_info + validation_text,

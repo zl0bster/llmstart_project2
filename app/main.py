@@ -10,7 +10,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
 from app.core.config import settings
-from app.bot.handlers import command_handlers, text_handlers, voice_handlers
+from app.bot.handlers import command_handlers, text_handlers, voice_handlers, photo_handlers
 
 
 def setup_logging() -> None:
@@ -71,6 +71,7 @@ async def main() -> None:
         dp.include_router(command_handlers.router)
         dp.include_router(text_handlers.router)
         dp.include_router(voice_handlers.router)
+        dp.include_router(photo_handlers.router)
         
         logging.info("Бот инициализирован, начинаем polling...")
         
