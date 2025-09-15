@@ -49,7 +49,7 @@ def test_llm_extraction():
     
     # Определяем провайдера и инициализируем клиент
     provider = os.getenv("LLM_PROVIDER", "lmstudio")
-    model = os.getenv("TEXT_MODEL", "openai/gpt-oss-20b")
+    model = os.getenv("TEXT_MODEL", "qwen2.5:7b")
     
     try:
         if provider == "lmstudio":
@@ -113,7 +113,7 @@ def test_specific_cases():
     
     # Определяем провайдера и инициализируем клиент
     provider = os.getenv("LLM_PROVIDER", "lmstudio")
-    model = os.getenv("TEXT_MODEL", "openai/gpt-oss-20b")
+    model = os.getenv("TEXT_MODEL", "qwen2.5:7b")
     
     try:
         if provider == "lmstudio":

@@ -71,7 +71,7 @@ BOT_TOKEN=your_telegram_bot_token
 
 # LLM провайдер (openrouter|ollama|lmstudio)
 LLM_PROVIDER=ollama
-TEXT_MODEL=deepseek-r1:7b
+TEXT_MODEL=qwen2.5:7b
 
 # Опциональные (есть значения по умолчанию)
 LOG_LEVEL=INFO

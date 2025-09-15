@@ -5,14 +5,46 @@ from aiogram import Router, F
 from aiogram.types import Message
 from aiogram.filters import Command
 
+from app.services.session_manager import SessionManager
+from app.services.data_service import DataService
+from app.bot.keyboards import get_idle_keyboard
+
 # Создаем роутер для команд
 router = Router()
+
+# Глобальные сервисы (будут инициализированы в main.py)
+session_manager: SessionManager = None
+data_service: DataService = None
+
+
+def init_services(sm: SessionManager, ds: DataService):
+    """
+    Инициализирует сервисы для обработчиков команд.
+    
+    Args:
+        sm: Менеджер сессий
+        ds: Сервис данных
+    """
+    global session_manager, data_service
+    session_manager = sm
+    data_service = ds
+    logging.info("Сервисы инициализированы для обработчиков команд")
 
 
 @router.message(Command("start"))
 async def cmd_start(message: Message) -> None:
     """Обработчик команды /start."""
-    logging.info(f"Пользователь {message.from_user.id} запустил бота")
+    user_id = message.from_user.id
+    user_name = message.from_user.full_name
+    
+    logging.info(f"Пользователь {user_id} ({user_name}) запустил бота")
+    
+    # Создаем пользователя в БД и сессию
+    if session_manager:
+        # Очищаем текущую сессию и создаем новую
+        session_manager.clear_session(user_id)
+        session_id = session_manager.get_or_create_session(user_id, user_name)
+        logging.info(f"Создана новая сессия {session_id} для пользователя {user_id}")
     
     welcome_text = (
         "🤖 <b>OTK Assistant</b>\n\n"
@@ -27,7 +59,7 @@ async def cmd_start(message: Message) -> None:
         "Используйте /help для получения справки."
     )
     
-    await message.answer(welcome_text)
+    await message.answer(welcome_text, reply_markup=get_idle_keyboard())
 
 
 @router.message(Command("help"))
@@ -54,16 +86,56 @@ async def cmd_help(message: Message) -> None:
 @router.message(Command("status"))
 async def cmd_status(message: Message) -> None:
     """Обработчик команды /status."""
-    logging.info(f"Пользователь {message.from_user.id} запросил статус")
+    user_id = message.from_user.id
+    user_name = message.from_user.full_name
     
-    status_text = (
-        "✅ <b>Статус системы</b>\n\n"
-        "🟢 Бот работает нормально\n"
-        "🟢 Все сервисы доступны\n"
-        "🟢 Готов к обработке данных\n\n"
-        "📊 <b>Информация:</b>\n"
-        f"👤 Пользователь ID: {message.from_user.id}\n"
-        f"📅 Время: {message.date.strftime('%Y-%m-%d %H:%M:%S')}"
-    )
+    logging.info(f"Пользователь {user_id} запросил статус")
     
+    status_parts = ["✅ <b>Статус системы</b>\n"]
+    
+    # Общий статус системы
+    status_parts.extend([
+        "🟢 Бот работает нормально",
+        "🟢 Все сервисы доступны",
+        "🟢 Готов к обработке данных\n"
+    ])
+    
+    # Информация о пользователе
+    status_parts.extend([
+        "📊 <b>Информация о пользователе:</b>",
+        f"👤 ID: {user_id}",
+        f"📝 Имя: {user_name}",
+        f"📅 Время: {message.date.strftime('%Y-%m-%d %H:%M:%S')}\n"
+    ])
+    
+    # Информация о сессии
+    if session_manager:
+        session_info = session_manager.get_session_info(user_id)
+        if session_info:
+            current_state = session_manager.get_state(user_id)
+            status_parts.extend([
+                "🔄 <b>Текущая сессия:</b>",
+                f"🆔 ID сессии: {session_info['session_id'][:8]}...",
+                f"📊 Состояние: {current_state.value if current_state else 'не определено'}",
+                f"💬 Сообщений: {session_info['messages_count']}",
+                f"📦 Заказов: {session_info['orders_count']}",
+                f"⏰ Последняя активность: {session_info['last_activity'][:19]}\n"
+            ])
+        else:
+            status_parts.append("🔄 <b>Сессия:</b> не активна\n")
+    
+    # Статистика пользователя
+    if data_service:
+        stats = data_service.get_user_statistics(user_id, days=7)
+        if stats:
+            status_parts.extend([
+                "📈 <b>Статистика за неделю:</b>",
+                f"🔍 Всего проверок: {stats['total_inspections']}",
+                f"✅ Годно: {stats['approved']}",
+                f"🔧 В доработку: {stats['rework']}",
+                f"❌ В брак: {stats['reject']}",
+                f"📊 Успешность: {stats['success_rate']}%"
+            ])
+    
+    status_text = "\n".join(status_parts)
     await message.answer(status_text)

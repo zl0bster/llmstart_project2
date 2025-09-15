@@ -1,0 +1,11 @@
+{
+  "orders": [
+    {
+      "order_id": "string (4-5 цифр)",
+      "status": "годно|в доработку|в брак (опционально)",
+      "comment": "string (опционально)"
+    }
+  ],
+  "requires_correction": "boolean",
+  "clarification_question": "string (опционально, только если requires_correction=true)"
+}

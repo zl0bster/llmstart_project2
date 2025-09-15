@@ -79,6 +79,16 @@ def get_validation_prompt() -> str:
     return _load_prompt_file("validation_prompt.txt")
 
 
+def get_json_schema() -> str:
+    """
+    Возвращает JSON схему для валидации ответов LLM.
+    
+    Returns:
+        str: JSON схема для структурирования ответов
+    """
+    return _load_prompt_file("json_schema.txt")
+
+
 def clear_prompt_cache() -> None:
     """
     Очищает кэш загруженных промптов.

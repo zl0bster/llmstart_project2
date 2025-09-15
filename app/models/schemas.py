@@ -9,6 +9,17 @@ from typing import List, Optional
 from enum import Enum
 
 
+class BotState(str, Enum):
+    """Состояния системы согласно vision.md и scen1_user_flow.md."""
+    idle = "idle"                           # Ожидание ввода
+    processing = "processing"               # Обработка данных
+    clarification = "clarification"         # Уточнение данных
+    confirmation = "confirmation"           # Подтверждение данных
+    cancellation = "cancellation"           # Отмена действия
+    reports_menu = "reports_menu"           # Меню отчетов
+    report_processing = "report_processing" # Формирование отчета
+
+
 class StatusEnum(str, Enum):
     """Статусы проверки изделий."""
     approved = "годно"
@@ -46,7 +57,10 @@ class SessionData(BaseModel):
     """Данные сессии пользователя."""
     session_id: str
     user_id: int
+    current_state: BotState = Field(default=BotState.idle)
+    previous_state: Optional[BotState] = Field(default=None)
     messages: List[str] = Field(default_factory=list)
     extracted_orders: List[OrderData] = Field(default_factory=list)
+    pending_data: Optional[dict] = Field(default=None)  # Временные данные для обработки
     created_at: str
     last_activity: str

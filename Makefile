@@ -87,39 +87,39 @@ db-export: ## Экспорт БД в CSV для пользователя (в dow
 # OLLAMA КОМАНДЫ
 # =============================================================================
 
-ollama-setup: ## Настройка Ollama и установка модели deepseek-r1:7b
+ollama-setup: ## Настройка Ollama и установка модели qwen2.5:7b
 	@echo "$(GREEN)Настройка Ollama...$(NC)"
 	@echo "$(YELLOW)Убедитесь, что Ollama установлен и запущен$(NC)"
 	@echo "$(YELLOW)Для установки: https://ollama.com/download$(NC)"
 	@echo ""
-	@echo "$(GREEN)Установка модели deepseek-r1:7b...$(NC)"
-	ollama pull deepseek-r1:7b
+	@echo "$(GREEN)Установка модели qwen2.5:7b...$(NC)"
+	ollama pull qwen2.5:7b
 	@echo "$(GREEN)Модель установлена. Проверка...$(NC)"
-	ollama list | grep deepseek-r1:7b || echo "$(RED)Модель не найдена$(NC)"
+	ollama list | grep qwen2.5:7b || echo "$(RED)Модель не найдена$(NC)"
 
 ollama-test: ## Быстрый тест Ollama без полной интеграции
 	@echo "$(GREEN)Быстрый тест Ollama...$(NC)"
-	$(PYTHON) quick_ollama_test.py
+	$(PYTHON) tests/check_ollama_models.py
 
 ollama-test-full: ## Полный тест интеграции с Ollama
 	@echo "$(GREEN)Полный тест интеграции Ollama...$(NC)"
 	$(PYTHON) test_ollama_integration.py
 
-ollama-pull: ## Скачивание модели deepseek-r1:7b
-	@echo "$(GREEN)Скачивание модели deepseek-r1:7b...$(NC)"
-	ollama pull deepseek-r1:7b
+ollama-pull: ## Скачивание модели qwen2.5:7b
+	@echo "$(GREEN)Скачивание модели qwen2.5:7b...$(NC)"
+	ollama pull qwen2.5:7b
 
 ollama-list: ## Список установленных моделей Ollama
 	@echo "$(GREEN)Установленные модели Ollama:$(NC)"
 	ollama list
 
-ollama-info: ## Информация о модели deepseek-r1:7b
-	@echo "$(GREEN)Информация о модели deepseek-r1:7b:$(NC)"
-	ollama show deepseek-r1:7b
+ollama-info: ## Информация о модели qwen2.5:7b
+	@echo "$(GREEN)Информация о модели qwen2.5:7b:$(NC)"
+	ollama show qwen2.5:7b
 
 ollama-run: ## Запуск интерактивного чата с моделью
-	@echo "$(GREEN)Запуск интерактивного чата с deepseek-r1:7b...$(NC)"
-	ollama run deepseek-r1:7b
+	@echo "$(GREEN)Запуск интерактивного чата с qwen2.5:7b...$(NC)"
+	ollama run qwen2.5:7b
 
 ollama-serve: ## Запуск Ollama сервера
 	@echo "$(GREEN)Запуск Ollama сервера...$(NC)"
@@ -160,9 +160,9 @@ check-ollama: ## Проверка статуса Ollama
 	@echo "$(GREEN)Проверка Ollama...$(NC)"
 	@curl -s http://localhost:11434/api/tags > /dev/null && echo "$(GREEN)✅ Ollama доступен$(NC)" || echo "$(RED)❌ Ollama недоступен$(NC)"
 
-check-model: ## Проверка наличия модели deepseek-r1:7b
-	@echo "$(GREEN)Проверка модели deepseek-r1:7b...$(NC)"
-	@ollama list | grep -q deepseek-r1:7b && echo "$(GREEN)✅ Модель установлена$(NC)" || echo "$(RED)❌ Модель не найдена$(NC)"
+check-model: ## Проверка наличия модели qwen2.5:7b
+	@echo "$(GREEN)Проверка модели qwen2.5:7b...$(NC)"
+	@ollama list | grep -q qwen2.5:7b && echo "$(GREEN)✅ Модель установлена$(NC)" || echo "$(RED)❌ Модель не найдена$(NC)"
 
 check-config: ## Проверка конфигурации
 	@echo "$(GREEN)Проверка конфигурации...$(NC)"
@@ -196,6 +196,10 @@ prod-build: ## Сборка для продакшна
 
 prod-deploy: ## Деплой в продакшн (Railway)
 	@echo "$(GREEN)Деплой в продакшн...$(NC)"
+	git push origin main
+
+push: ## Отправка изменений в удаленный репозиторий
+	@echo "$(GREEN)Отправка изменений в Git...$(NC)"
 	git push origin main
 
 # =============================================================================

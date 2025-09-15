@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class OllamaLLMClient(BaseLLMClient):
     """Клиент для работы с LLM через Ollama."""
     
-    def __init__(self, base_url: str = "http://localhost:11434", model: str = "deepseek-r1:7b", 
+    def __init__(self, base_url: str = "http://localhost:11434", model: str = "qwen2.5:7b", 
                  auto_pull: bool = True, timeout_sec: int = 120, num_predict: int = 2000, 
                  temperature: float = 0.1):
         """

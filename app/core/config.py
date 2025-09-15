@@ -77,7 +77,7 @@ class Settings(BaseSettings):
     # =============================================================================
     
     llm_provider: str = Field("openrouter", env="LLM_PROVIDER", description="Провайдер для текстового анализа")
-    text_model: str = Field("gpt-4", env="TEXT_MODEL", description="Текстовая модель")
+    text_model: str = Field("qwen2.5:7b", env="TEXT_MODEL", description="Текстовая модель")
     vision_provider: str = Field("openrouter", env="VISION_PROVIDER", description="Провайдер для анализа изображений")
     vision_model: str = Field("gpt-4-vision", env="VISION_MODEL", description="Модель для анализа изображений")
     speech_provider: str = Field("whisper", env="SPEECH_PROVIDER", description="Провайдер для обработки речи")
