@@ -5,7 +5,7 @@ from aiogram import Router, F
 from aiogram.types import Message
 from aiogram.filters import Command
 
-from app.services.session_manager import SessionManager
+from app.services.session_service import get_session_manager
 from app.services.data_service import DataService
 from app.bot.keyboards import get_idle_keyboard
 
@@ -13,20 +13,17 @@ from app.bot.keyboards import get_idle_keyboard
 router = Router()
 
 # Глобальные сервисы (будут инициализированы в main.py)
-session_manager: SessionManager = None
 data_service: DataService = None
 
 
-def init_services(sm: SessionManager, ds: DataService):
+def init_services(ds: DataService):
     """
     Инициализирует сервисы для обработчиков команд.
     
     Args:
-        sm: Менеджер сессий
         ds: Сервис данных
     """
-    global session_manager, data_service
-    session_manager = sm
+    global data_service
     data_service = ds
     logging.info("Сервисы инициализированы для обработчиков команд")
 
@@ -40,11 +37,11 @@ async def cmd_start(message: Message) -> None:
     logging.info(f"Пользователь {user_id} ({user_name}) запустил бота")
     
     # Создаем пользователя в БД и сессию
-    if session_manager:
-        # Очищаем текущую сессию и создаем новую
-        session_manager.clear_session(user_id)
-        session_id = session_manager.get_or_create_session(user_id, user_name)
-        logging.info(f"Создана новая сессия {session_id} для пользователя {user_id}")
+    session_manager = get_session_manager()
+    # Очищаем текущую сессию и создаем новую
+    session_manager.clear_session(user_id)
+    session_id = session_manager.get_or_create_session(user_id, user_name)
+    logging.info(f"Создана новая сессия {session_id} для пользователя {user_id}")
     
     welcome_text = (
         "🤖 <b>OTK Assistant</b>\n\n"
@@ -109,20 +106,20 @@ async def cmd_status(message: Message) -> None:
     ])
     
     # Информация о сессии
-    if session_manager:
-        session_info = session_manager.get_session_info(user_id)
-        if session_info:
-            current_state = session_manager.get_state(user_id)
-            status_parts.extend([
-                "🔄 <b>Текущая сессия:</b>",
-                f"🆔 ID сессии: {session_info['session_id'][:8]}...",
-                f"📊 Состояние: {current_state.value if current_state else 'не определено'}",
-                f"💬 Сообщений: {session_info['messages_count']}",
-                f"📦 Заказов: {session_info['orders_count']}",
-                f"⏰ Последняя активность: {session_info['last_activity'][:19]}\n"
-            ])
-        else:
-            status_parts.append("🔄 <b>Сессия:</b> не активна\n")
+    session_manager = get_session_manager()
+    session_info = session_manager.get_session_info(user_id)
+    if session_info:
+        current_state = session_manager.get_state(user_id)
+        status_parts.extend([
+            "🔄 <b>Текущая сессия:</b>",
+            f"🆔 ID сессии: {session_info['session_id'][:8]}...",
+            f"📊 Состояние: {current_state.value if current_state else 'не определено'}",
+            f"💬 Сообщений: {session_info['messages_count']}",
+            f"📦 Заказов: {session_info['orders_count']}",
+            f"⏰ Последняя активность: {session_info['last_activity'][:19]}\n"
+        ])
+    else:
+        status_parts.append("🔄 <b>Сессия:</b> не активна\n")
     
     # Статистика пользователя
     if data_service:

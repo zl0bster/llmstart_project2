@@ -8,7 +8,7 @@ from aiogram.filters import Command
 
 from app.clients.speech_client import create_speech_client, WhisperClient, WhisperAPIClient
 from app.services.media_processor import media_processor
-from app.services.session_manager import SessionManager
+from app.services.session_service import get_session_manager
 from app.bot.keyboards import get_processing_keyboard
 from app.core.config import settings
 
@@ -17,7 +17,6 @@ router = Router()
 
 # Инициализация компонентов
 speech_client = None
-session_manager = SessionManager(timeout_minutes=settings.session_timeout_min)
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +94,7 @@ async def handle_voice_message(message: Message, bot: Bot) -> None:
             return
         
         # Создаем или получаем сессию
+        session_manager = get_session_manager()
         session_id = session_manager.get_or_create_session(user_id)
         
         # Состояние обработки будет управляться автоматически
@@ -177,7 +177,7 @@ async def handle_voice_message(message: Message, bot: Bot) -> None:
             logger.warning(f"Не удалось удалить временный файл {converted_file_path}: {e}")
         
         # Сохраняем транскрипцию в сессию
-        session_manager.add_message(session_id, f"[ГОЛОС -> ТЕКСТ]: {transcribed_text}")
+        session_manager.add_message(user_id, f"[ГОЛОС -> ТЕКСТ]: {transcribed_text}")
         
         # Обновляем сообщение
         await processing_msg.edit_text(

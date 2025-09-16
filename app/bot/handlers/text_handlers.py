@@ -8,7 +8,8 @@ from aiogram.filters import Command
 from app.clients.llm_client import OpenRouterLLMClient
 from app.clients.lmstudio_client import LMStudioLLMClient
 from app.clients.ollama_client import OllamaLLMClient
-from app.services.session_manager import SessionManager
+from app.services.session_service import get_session_manager
+from app.models.schemas import BotState
 from app.bot.keyboards import (
     get_validation_keyboard, 
     get_processing_keyboard,
@@ -24,37 +25,44 @@ router = Router()
 
 # Инициализация компонентов
 llm_client = None
-session_manager = SessionManager(timeout_minutes=settings.session_timeout_min)
 
 
 def init_llm_client():
     """Инициализация LLM клиента."""
     global llm_client
     if llm_client is None:
-        if settings.llm_provider == "lmstudio":
-            llm_client = LMStudioLLMClient(
-                base_url=settings.lmstudio_base_url,
-                model=settings.text_model
-            )
-            logging.info(f"LM Studio клиент инициализирован с моделью {settings.text_model}")
-        elif settings.llm_provider == "openrouter" and settings.openrouter_api_key:
-            llm_client = OpenRouterLLMClient(
-                api_key=settings.openrouter_api_key,
-                model=settings.text_model
-            )
-            logging.info(f"OpenRouter клиент инициализирован с моделью {settings.text_model}")
-        elif settings.llm_provider == "ollama":
-            llm_client = OllamaLLMClient(
-                base_url=settings.ollama_base_url,
-                model=settings.text_model,
-                auto_pull=settings.ollama_auto_pull,
-                timeout_sec=settings.ollama_timeout_sec,
-                num_predict=settings.ollama_num_predict,
-                temperature=settings.ollama_temperature
-            )
-            logging.info(f"Ollama клиент инициализирован с моделью {settings.text_model}")
-        else:
-            logging.error(f"Не удалось инициализировать LLM клиент. Провайдер: {settings.llm_provider}")
+        try:
+            if settings.llm_provider == "lmstudio":
+                llm_client = LMStudioLLMClient(
+                    base_url=settings.lmstudio_base_url,
+                    model=settings.text_model
+                )
+                logging.info(f"LM Studio клиент инициализирован с моделью {settings.text_model}")
+            elif settings.llm_provider == "openrouter" and settings.openrouter_api_key:
+                llm_client = OpenRouterLLMClient(
+                    api_key=settings.openrouter_api_key,
+                    model=settings.text_model
+                )
+                logging.info(f"OpenRouter клиент инициализирован с моделью {settings.text_model}")
+            elif settings.llm_provider == "ollama":
+                llm_client = OllamaLLMClient(
+                    base_url=settings.ollama_base_url,
+                    model=settings.text_model,
+                    auto_pull=settings.ollama_auto_pull,
+                    timeout_sec=settings.ollama_timeout_sec,
+                    num_predict=settings.ollama_num_predict,
+                    temperature=settings.ollama_temperature
+                )
+                logging.info(f"Ollama клиент инициализирован с моделью {settings.text_model}")
+            else:
+                logging.error(f"Не удалось инициализировать LLM клиент. Провайдер: {settings.llm_provider}")
+                return False
+        except Exception as e:
+            logging.error(f"Ошибка инициализации LLM клиента: {e}")
+            llm_client = None
+            return False
+    
+    return llm_client is not None
 
 
 @router.message(F.text)
@@ -66,15 +74,14 @@ async def handle_text_message(message: Message) -> None:
     logging.info(f"Получено текстовое сообщение от пользователя {user_id}: {text[:100]}...")
     
     # Инициализируем LLM клиент если нужно
-    init_llm_client()
-    
-    if llm_client is None:
+    if not init_llm_client():
         await message.answer(
             "❌ LLM сервис недоступен. Проверьте настройки API ключей."
         )
         return
     
     # Получаем или создаем сессию
+    session_manager = get_session_manager()
     session_id = session_manager.get_or_create_session(user_id)
     
     # Добавляем сообщение в историю сессии
@@ -164,7 +171,8 @@ async def process_text_with_llm(
         # Переводим в состояние обработки
         from app.services.state_machine import StateMachine
         state_machine = StateMachine()
-        state_machine.transition_to_state(user_id, BotState.PROCESSING)
+        # TODO: Реализовать правильное управление состояниями с текущим состоянием
+        logging.info(f"Переход пользователя {user_id} в состояние PROCESSING")
         
         # Создаем сообщение о начале обработки если его нет
         if not processing_message:
@@ -181,7 +189,8 @@ async def process_text_with_llm(
             )
         
         # Получаем историю сессии для контекста
-        session_history = session_manager.get_session_history(session_id)
+        session_manager = get_session_manager()
+        session_history = session_manager.get_session_history(user_id)
         
         # Обрабатываем через LLM
         llm_response = llm_client.process_text(text, session_history)
@@ -193,16 +202,16 @@ async def process_text_with_llm(
             prefix = "[ФОТО -> ТЕКСТ]"
         else:
             prefix = "[ТЕКСТ]"
-        session_manager.add_message(session_id, f"{prefix}: {text}")
-        session_manager.add_message(session_id, f"[LLM]: {llm_response.model_dump_json()}")
+        session_manager.add_message(user_id, f"{prefix}: {text}")
+        session_manager.add_message(user_id, f"[LLM]: {llm_response.model_dump_json()}")
         
         logging.info(f"LLM обработка для пользователя {user_id}: "
                     f"извлечено {len(llm_response.orders)} заказов, "
                     f"требует уточнения: {llm_response.requires_correction}")
         
         if llm_response.requires_correction and llm_response.clarification_question:
-            # Требуется уточнение
-            state_machine.transition_to_state(user_id, BotState.CLARIFICATION)
+            # Требуется уточнение  
+            logging.info(f"Переход пользователя {user_id} в состояние CLARIFICATION")
             
             await processing_message.edit_text(
                 f"❓ <b>Требуется уточнение</b>\n\n{llm_response.clarification_question}",
@@ -216,7 +225,7 @@ async def process_text_with_llm(
                 session_manager.set_extracted_orders(user_id, llm_response.orders)
                 
                 # Переводим в состояние подтверждения
-                state_machine.transition_to_state(user_id, BotState.CONFIRMATION)
+                logging.info(f"Переход пользователя {user_id} в состояние CONFIRMATION")
                 
                 # Форматируем данные для подтверждения
                 validation_text = format_orders_for_validation(llm_response.orders)
@@ -235,7 +244,7 @@ async def process_text_with_llm(
                     reply_markup=get_confirmation_keyboard()
                 )
             else:
-                state_machine.transition_to_state(user_id, BotState.IDLE)
+                logging.info(f"Переход пользователя {user_id} в состояние IDLE")
                 
                 source_info = "голосового сообщения" if is_voice_transcription else "текста"
                 await processing_message.edit_text(
@@ -248,9 +257,7 @@ async def process_text_with_llm(
         logging.error(f"Ошибка при обработке текста через LLM: {e}")
         
         # Переводим в idle состояние
-        from app.services.state_machine import StateMachine
-        state_machine = StateMachine()
-        state_machine.transition_to_state(user_id, BotState.IDLE)
+        logging.info(f"Переход пользователя {user_id} в состояние IDLE после ошибки")
         
         error_text = "❌ Произошла ошибка при обработке. Попробуйте еще раз."
         
@@ -266,6 +273,7 @@ async def handle_confirm_data(callback: CallbackQuery) -> None:
     user_id = callback.from_user.id
     
     # Получаем извлеченные заказы из сессии
+    session_manager = get_session_manager()
     orders = session_manager.get_extracted_orders(user_id)
     
     if orders:
@@ -320,6 +328,7 @@ async def handle_confirm_cancel(callback: CallbackQuery) -> None:
     user_id = callback.from_user.id
     
     # Очищаем сессию
+    session_manager = get_session_manager()
     session_manager.clear_session(user_id)
     
     await callback.message.edit_text(
@@ -337,6 +346,7 @@ async def handle_stop_processing(callback: CallbackQuery) -> None:
     user_id = callback.from_user.id
     
     # Очищаем сессию
+    session_manager = get_session_manager()
     session_manager.clear_session(user_id)
     
     await callback.message.edit_text(

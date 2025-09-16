@@ -9,7 +9,7 @@ from aiogram.filters import Command
 
 from app.clients.vision_client import create_vision_client, GPT4VisionClient, OpenRouterVisionClient
 from app.services.media_processor import media_processor
-from app.services.session_manager import SessionManager
+from app.services.session_service import get_session_manager
 from app.bot.keyboards import get_processing_keyboard
 from app.core.config import settings
 
@@ -18,7 +18,6 @@ router = Router()
 
 # Инициализация компонентов
 vision_client = None
-session_manager = SessionManager(timeout_minutes=settings.session_timeout_min)
 
 logger = logging.getLogger(__name__)
 
@@ -159,6 +158,7 @@ async def handle_photo_message(message: Message, bot: Bot) -> None:
             return
         
         # Создаем или получаем сессию
+        session_manager = get_session_manager()
         session_id = session_manager.get_or_create_session(user_id)
         
         # Отправляем сообщение о начале обработки
@@ -254,7 +254,7 @@ async def handle_photo_message(message: Message, bot: Bot) -> None:
         logger.debug(f"Полный извлеченный текст: {extracted_text}")
         
         # Сохраняем извлеченный текст в сессию
-        session_manager.add_message(session_id, f"[ФОТО -> ТЕКСТ]: {extracted_text}")
+        session_manager.add_message(user_id, f"[ФОТО -> ТЕКСТ]: {extracted_text}")
         
         # Обновляем сообщение
         preview_text = extracted_text[:300] + "..." if len(extracted_text) > 300 else extracted_text
@@ -321,6 +321,7 @@ async def handle_document_message(message: Message, bot: Bot) -> None:
             return
         
         # Создаем или получаем сессию
+        session_manager = get_session_manager()
         session_id = session_manager.get_or_create_session(user_id)
         
         # Отправляем сообщение о начале обработки
@@ -407,7 +408,7 @@ async def handle_document_message(message: Message, bot: Bot) -> None:
         logger.debug(f"Полный извлеченный текст документа: {extracted_text}")
         
         # Сохраняем извлеченный текст в сессию
-        session_manager.add_message(session_id, f"[ДОКУМЕНТ -> ТЕКСТ]: {extracted_text}")
+        session_manager.add_message(user_id, f"[ДОКУМЕНТ -> ТЕКСТ]: {extracted_text}")
         
         # Обновляем сообщение
         preview_text = extracted_text[:300] + "..." if len(extracted_text) > 300 else extracted_text
