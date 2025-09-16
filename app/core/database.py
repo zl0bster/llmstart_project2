@@ -7,7 +7,7 @@
 
 import os
 from typing import Generator
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import StaticPool
 
@@ -94,7 +94,7 @@ def init_database():
         
         # Проверяем подключение
         with get_db_session() as db:
-            db.execute("SELECT 1")
+            db.execute(text("SELECT 1"))
             print("✅ Подключение к базе данных работает")
             
     except Exception as e:
