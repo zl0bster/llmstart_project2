@@ -7,6 +7,7 @@ from typing import Dict, Any
 
 from aiohttp import web, ClientSession
 from aiohttp.web import Request, Response
+from sqlalchemy import text
 
 from app.core.config import settings
 from app.core.database import get_db_session
@@ -21,13 +22,24 @@ class HealthChecker:
     async def check_database(self) -> Dict[str, Any]:
         """Проверка состояния базы данных."""
         try:
-            async with get_db_session() as session:
-                # Простой запрос для проверки подключения
-                result = await session.execute("SELECT 1")
-                return {
-                    "status": "healthy",
-                    "message": "Database connection successful"
-                }
+            # Используем синхронную сессию в отдельном потоке
+            import asyncio
+            from concurrent.futures import ThreadPoolExecutor
+            
+            def _check_db():
+                with get_db_session() as session:
+                    result = session.execute(text("SELECT 1"))
+                    return result.fetchone()
+            
+            # Выполняем синхронную операцию в отдельном потоке
+            loop = asyncio.get_event_loop()
+            with ThreadPoolExecutor() as executor:
+                result = await loop.run_in_executor(executor, _check_db)
+            
+            return {
+                "status": "healthy",
+                "message": "Database connection successful"
+            }
         except Exception as e:
             self.logger.error(f"Database health check failed: {e}")
             return {
