@@ -10,6 +10,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
 from app.core.config import settings
+from app.core.database import init_database
 from app.bot.handlers import command_handlers, text_handlers, voice_handlers, photo_handlers
 
 
@@ -57,6 +58,10 @@ async def main() -> None:
     try:
         # Настройка логирования
         setup_logging()
+        
+        # Инициализация базы данных
+        logging.info("Инициализация базы данных...")
+        init_database()
         
         # Инициализация бота
         bot = Bot(

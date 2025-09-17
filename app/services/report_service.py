@@ -40,7 +40,10 @@ class ReportService:
         Returns:
             str: Текстовая сводка
         """
-        logger.info(f"Генерация дневной сводки для пользователя {user_id}")
+        if user_id:
+            logger.info(f"Генерация дневной сводки для пользователя {user_id}")
+        else:
+            logger.info("Генерация дневной сводки для всех пользователей")
         
         try:
             start_date, end_date = self._get_date_range('day')
@@ -68,7 +71,10 @@ class ReportService:
         Returns:
             str: Текстовая сводка
         """
-        logger.info(f"Генерация недельной сводки для пользователя {user_id}")
+        if user_id:
+            logger.info(f"Генерация недельной сводки для пользователя {user_id}")
+        else:
+            logger.info("Генерация недельной сводки для всех пользователей")
         
         try:
             start_date, end_date = self._get_date_range('week')
@@ -96,7 +102,10 @@ class ReportService:
         Returns:
             Optional[str]: Путь к созданному файлу или None при ошибке
         """
-        logger.info(f"Генерация дневного CSV для пользователя {user_id}")
+        if user_id:
+            logger.info(f"Генерация дневного CSV для пользователя {user_id}")
+        else:
+            logger.info("Генерация дневного CSV для всех пользователей")
         
         try:
             start_date, end_date = self._get_date_range('day')
@@ -107,9 +116,10 @@ class ReportService:
                 return None
             
             date_str = start_date.strftime('%Y-%m-%d')
-            filename = f"otk_daily_report_{date_str}.csv"
             if user_id:
                 filename = f"otk_daily_report_user{user_id}_{date_str}.csv"
+            else:
+                filename = f"otk_daily_report_all_users_{date_str}.csv"
             
             file_path = self.temp_dir / filename
             self._write_csv_file(file_path, inspections)
@@ -131,7 +141,10 @@ class ReportService:
         Returns:
             Optional[str]: Путь к созданному файлу или None при ошибке
         """
-        logger.info(f"Генерация недельного CSV для пользователя {user_id}")
+        if user_id:
+            logger.info(f"Генерация недельного CSV для пользователя {user_id}")
+        else:
+            logger.info("Генерация недельного CSV для всех пользователей")
         
         try:
             start_date, end_date = self._get_date_range('week')
@@ -142,9 +155,10 @@ class ReportService:
                 return None
             
             week_str = start_date.strftime('%Y-W%W')
-            filename = f"otk_weekly_report_{week_str}.csv"
             if user_id:
                 filename = f"otk_weekly_report_user{user_id}_{week_str}.csv"
+            else:
+                filename = f"otk_weekly_report_all_users_{week_str}.csv"
             
             file_path = self.temp_dir / filename
             self._write_csv_file(file_path, inspections)
@@ -324,7 +338,7 @@ class ReportService:
             return self._empty_stats()
     
     def _get_inspections(self, start_date: datetime, end_date: datetime,
-                        user_id: Optional[int] = None) -> List[Inspection]:
+                        user_id: Optional[int] = None) -> List[Dict[str, Any]]:
         """
         Получает список проверок за период для CSV экспорта.
         
@@ -334,12 +348,12 @@ class ReportService:
             user_id: ID пользователя (опционально)
             
         Returns:
-            List[Inspection]: Список проверок
+            List[Dict[str, Any]]: Список данных проверок
         """
         try:
             with get_db_session() as db:
                 query = (
-                    db.query(Inspection)
+                    db.query(Inspection, User.name, User.telegram_id)
                     .join(User)
                     .filter(
                         and_(
@@ -357,19 +371,32 @@ class ReportService:
                     else:
                         return []
                 
-                return query.all()
+                # Возвращаем данные как словари, а не объекты
+                results = []
+                for inspection, user_name, telegram_id in query.all():
+                    results.append({
+                        'created_at': inspection.created_at,
+                        'order_id': inspection.order_id,
+                        'status': inspection.status,
+                        'comment': inspection.comment,
+                        'user_name': user_name,
+                        'telegram_id': telegram_id,
+                        'session_id': inspection.session_id
+                    })
+                
+                return results
                 
         except Exception as e:
             logger.error(f"Ошибка получения списка проверок: {e}")
             return []
     
-    def _write_csv_file(self, file_path: Path, inspections: List[Inspection]) -> None:
+    def _write_csv_file(self, file_path: Path, inspections: List[Dict[str, Any]]) -> None:
         """
         Записывает данные проверок в CSV файл.
         
         Args:
             file_path: Путь к файлу
-            inspections: Список проверок
+            inspections: Список данных проверок
         """
         with open(file_path, 'w', newline='', encoding='utf-8') as csvfile:
             fieldnames = [
@@ -386,12 +413,12 @@ class ReportService:
             
             for inspection in inspections:
                 writer.writerow({
-                    'Дата создания': inspection.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-                    'Номер заказа': inspection.order_id,
-                    'Статус': inspection.status,
-                    'Комментарий': inspection.comment or '',
-                    'Контролер': inspection.user.name or f"User_{inspection.user.telegram_id}",
-                    'ID сессии': inspection.session_id[:8] + '...'  # Сокращенный ID
+                    'Дата создания': inspection['created_at'].strftime('%Y-%m-%d %H:%M:%S'),
+                    'Номер заказа': inspection['order_id'],
+                    'Статус': inspection['status'],
+                    'Комментарий': inspection['comment'] or '',
+                    'Контролер': inspection['user_name'] or f"User_{inspection['telegram_id']}",
+                    'ID сессии': inspection['session_id'][:8] + '...'  # Сокращенный ID
                 })
     
     def _format_summary_report(self, stats: Dict[str, Any], period: str) -> str:

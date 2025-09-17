@@ -192,15 +192,15 @@ async def handle_report_callbacks(callback: CallbackQuery) -> None:
     try:
         # Обрабатываем разные типы отчетов
         if callback.data == "report_summary_today":
-            report_text = report_service.generate_daily_summary(user_id)
+            report_text = report_service.generate_daily_summary(None)  # Все пользователи
             await callback.message.edit_text(report_text, parse_mode="HTML")
             
         elif callback.data == "report_summary_week":
-            report_text = report_service.generate_weekly_summary(user_id)
+            report_text = report_service.generate_weekly_summary(None)  # Все пользователи
             await callback.message.edit_text(report_text, parse_mode="HTML")
             
         elif callback.data == "report_data_today":
-            file_path = report_service.generate_daily_csv(user_id)
+            file_path = report_service.generate_daily_csv(None)  # Все пользователи
             if file_path and Path(file_path).exists():
                 # Отправляем CSV файл
                 document = FSInputFile(file_path, filename=Path(file_path).name)
@@ -218,7 +218,7 @@ async def handle_report_callbacks(callback: CallbackQuery) -> None:
                 )
                 
         elif callback.data == "report_data_week":
-            file_path = report_service.generate_weekly_csv(user_id)
+            file_path = report_service.generate_weekly_csv(None)  # Все пользователи
             if file_path and Path(file_path).exists():
                 # Отправляем CSV файл
                 document = FSInputFile(file_path, filename=Path(file_path).name)

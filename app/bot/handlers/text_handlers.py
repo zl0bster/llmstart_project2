@@ -277,21 +277,47 @@ async def handle_confirm_data(callback: CallbackQuery) -> None:
     orders = session_manager.get_extracted_orders(user_id)
     
     if orders:
-        # TODO: В итерации 3 здесь будет сохранение в БД
-        orders_text = "\n".join([
-            f"• Заказ #{order.order_id}: {order.status.value if order.status else 'не указан'} - {order.comment or 'без комментария'}"
-            for order in orders
-        ])
+        # Сохраняем данные в БД
+        from app.services.data_service import DataService
+        data_service = DataService()
         
-        await callback.message.edit_text(
-            f"✅ <b>Данные подтверждены и сохранены:</b>\n\n{orders_text}\n\n"
-            f"📝 Отправьте следующий отчет или используйте /reports для просмотра отчетов."
-        )
-        
-        # Очищаем сессию после успешного сохранения
-        session_manager.clear_session(user_id)
-        
-        logging.info(f"Пользователь {user_id} подтвердил {len(orders)} заказов")
+        session_info = session_manager.get_session_info(user_id)
+        if session_info:
+            inspections = data_service.save_inspections(
+                user_id=user_id,
+                session_id=session_info['session_id'],
+                orders=orders
+            )
+            
+            if inspections:
+                # Обновляем статус диалогов
+                data_service.update_dialogue_status(session_info['session_id'], 'confirmed')
+                data_service.link_dialogues_to_inspections(session_info['session_id'], inspections)
+                
+                orders_text = "\n".join([
+                    f"• Заказ #{order.order_id}: {order.status.value if order.status else 'не указан'} - {order.comment or 'без комментария'}"
+                    for order in orders
+                ])
+                
+                await callback.message.edit_text(
+                    f"✅ <b>Данные подтверждены и сохранены:</b>\n\n{orders_text}\n\n"
+                    f"📝 Отправьте следующий отчет или используйте /reports для просмотра отчетов."
+                )
+                
+                # Очищаем сессию после успешного сохранения
+                session_manager.clear_session(user_id)
+                
+                logging.info(f"Пользователь {user_id} подтвердил {len(orders)} заказов")
+            else:
+                await callback.message.edit_text(
+                    "❌ Ошибка сохранения данных. Попробуйте еще раз."
+                )
+                logging.error(f"Не удалось сохранить данные для пользователя {user_id}")
+        else:
+            await callback.message.edit_text(
+                "❌ Ошибка: сессия не найдена. Попробуйте еще раз."
+            )
+            logging.error(f"Сессия не найдена для пользователя {user_id}")
     else:
         await callback.message.edit_text(
             "❌ Нет данных для подтверждения. Попробуйте отправить отчет еще раз."
