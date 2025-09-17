@@ -266,22 +266,22 @@
 **Ссылки**: @vision.md (строки 822-837, 955-957)
 
 ### Задачи:
-- [ ] Создать Dockerfile для контейнеризации
-- [ ] Создать docker-compose.yml для локальной разработки
-- [ ] Реализовать все 12 команд Makefile согласно @vision.md (строки 822-837)
-- [ ] Создать команды: dev, build, run, stop, logs, clean, test, lint, format, install, db-migrate, db-reset, db-backup, db-export
-- [ ] Подготовить docs/DEPLOYMENT.md - инструкции по развертыванию
-- [ ] Настроить переменные окружения для продакшна согласно @vision.md
-- [ ] Создать .dockerignore для оптимизации сборки
-- [ ] Добавить health check в Docker
-- [ ] Подготовить Railway конфигурацию
-- [ ] Создать скрипты для бэкапа БД
-- [ ] Протестировать: Docker build → run → Railway deploy
-- [ ] Протестировать все Makefile команды
+- [x] Создать Dockerfile для контейнеризации
+- [x] Создать docker-compose.yml для локальной разработки
+- [x] Реализовать все 12 команд Makefile согласно @vision.md (строки 822-837)
+- [x] Создать команды: dev, build, run, stop, logs, clean, test, lint, format, install, db-migrate, db-reset, db-backup, db-export
+- [x] Подготовить docs/DEPLOYMENT.md - инструкции по развертыванию
+- [x] Настроить переменные окружения для продакшна согласно @vision.md
+- [x] Создать .dockerignore для оптимизации сборки
+- [x] Добавить health check в Docker
+- [x] Подготовить Railway конфигурацию
+- [x] Создать скрипты для бэкапа БД
+- [x] Протестировать: Docker build → run → Railway deploy
+- [x] Протестировать все Makefile команды
 
 ### Документация:
-- [ ] Создать docs/DEPLOYMENT.md - полное руководство по развертыванию согласно @vision.md (строки 902-913)
-- [ ] Обновить README.md с инструкциями по Docker
+- [x] Создать docs/DEPLOYMENT.md - полное руководство по развертыванию согласно @vision.md (строки 902-913)
+- [x] Обновить README.md с инструкциями по Docker
 
 ---
 
