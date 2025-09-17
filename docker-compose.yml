@@ -1,0 +1,165 @@
+# OTK Assistant - Docker Compose
+# Конфигурация для локальной разработки и тестирования
+
+version: '3.8'
+
+services:
+  # =============================================================================
+  # ОСНОВНОЕ ПРИЛОЖЕНИЕ
+  # =============================================================================
+  otk-assistant:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: otk-assistant
+    restart: unless-stopped
+    environment:
+      # Основные настройки
+      - BOT_TOKEN=${BOT_TOKEN}
+      - DATABASE_URL=sqlite:///data/otk_assistant.db
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_DIR=logs/
+      - CACHE_DIR=cache/
+      
+      # Провайдеры
+      - LLM_PROVIDER=${LLM_PROVIDER:-ollama}
+      - TEXT_MODEL=${TEXT_MODEL:-qwen2.5:7b}
+      - VISION_PROVIDER=${VISION_PROVIDER:-openrouter}
+      - VISION_MODEL=${VISION_MODEL:-gpt-4-vision}
+      - SPEECH_PROVIDER=${SPEECH_PROVIDER:-whisperapi}
+      - SPEECH_MODEL=${SPEECH_MODEL:-large-v2}
+      
+      # API ключи
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - WHISPERAPI_API_KEY=${WHISPERAPI_API_KEY}
+      
+      # Локальные сервисы
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}
+      - LMSTUDIO_BASE_URL=${LMSTUDIO_BASE_URL:-http://lmstudio:1234}
+      
+      # Сетевые параметры
+      - HTTP_TIMEOUT_SEC=${HTTP_TIMEOUT_SEC:-30}
+      - HTTP_RETRIES=${HTTP_RETRIES:-2}
+      - HTTP_RETRY_BACKOFF_SEC=${HTTP_RETRY_BACKOFF_SEC:-2}
+      
+      # Ollama настройки
+      - OLLAMA_AUTO_PULL=${OLLAMA_AUTO_PULL:-true}
+      - OLLAMA_TIMEOUT_SEC=${OLLAMA_TIMEOUT_SEC:-300}
+      - OLLAMA_NUM_PREDICT=${OLLAMA_NUM_PREDICT:-500}
+      - OLLAMA_TEMPERATURE=${OLLAMA_TEMPERATURE:-0.1}
+    volumes:
+      # Данные приложения
+      - ./data:/app/data
+      - ./cache:/app/cache
+      - ./logs:/app/logs
+      - ./downloads:/app/downloads
+      # Конфигурация
+      - ./prompts:/app/prompts:ro
+    ports:
+      - "8000:8000"  # Health check endpoint
+    depends_on:
+      - ollama
+    networks:
+      - otk-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # =============================================================================
+  # OLLAMA (ЛОКАЛЬНЫЕ LLM МОДЕЛИ)
+  # =============================================================================
+  ollama:
+    image: ollama/ollama:latest
+    container_name: otk-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    networks:
+      - otk-network
+    # Автоматическая установка модели при первом запуске
+    command: >
+      sh -c "
+        ollama serve &
+        sleep 10 &&
+        ollama pull qwen2.5:7b &&
+        wait
+      "
+
+  # =============================================================================
+  # LM STUDIO (АЛЬТЕРНАТИВА OLLAMA)
+  # =============================================================================
+  lmstudio:
+    image: lmstudio/lmstudio:latest
+    container_name: otk-lmstudio
+    restart: unless-stopped
+    ports:
+      - "1234:1234"
+    volumes:
+      - lmstudio_data:/app/data
+    networks:
+      - otk-network
+    profiles:
+      - lmstudio  # Запускается только при указании профиля
+
+  # =============================================================================
+  # POSTGRESQL (АЛЬТЕРНАТИВА SQLITE)
+  # =============================================================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: otk-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=otk_assistant
+      - POSTGRES_USER=otk
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-otk_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - otk-network
+    profiles:
+      - postgres  # Запускается только при указании профиля
+
+  # =============================================================================
+  # REDIS (КЭШИРОВАНИЕ И СЕССИИ)
+  # =============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: otk-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - otk-network
+    profiles:
+      - redis  # Запускается только при указании профиля
+
+# =============================================================================
+# СЕТИ И ТОМА
+# =============================================================================
+networks:
+  otk-network:
+    driver: bridge
+    name: otk-network
+
+volumes:
+  ollama_data:
+    name: otk_ollama_data
+  lmstudio_data:
+    name: otk_lmstudio_data
+  postgres_data:
+    name: otk_postgres_data
+  redis_data:
+    name: otk_redis_data

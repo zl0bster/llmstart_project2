@@ -8,10 +8,12 @@ from pathlib import Path
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
+from aiohttp import web
 
 from app.core.config import settings
 from app.core.database import init_database
 from app.bot.handlers import command_handlers, text_handlers, voice_handlers, photo_handlers
+from app.health import create_health_app
 
 
 def setup_logging() -> None:
@@ -78,6 +80,16 @@ async def main() -> None:
         dp.include_router(voice_handlers.router)
         dp.include_router(photo_handlers.router)
         
+        # Создание health check приложения
+        health_app = create_health_app()
+        
+        # Запуск health check сервера
+        health_runner = web.AppRunner(health_app)
+        await health_runner.setup()
+        health_site = web.TCPSite(health_runner, '0.0.0.0', 8000)
+        await health_site.start()
+        
+        logging.info("Health check сервер запущен на порту 8000")
         logging.info("Бот инициализирован, начинаем polling...")
         
         # Запуск бота
@@ -89,6 +101,8 @@ async def main() -> None:
     finally:
         if 'bot' in locals():
             await bot.session.close()
+        if 'health_runner' in locals():
+            await health_runner.cleanup()
 
 
 if __name__ == "__main__":

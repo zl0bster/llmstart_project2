@@ -1,7 +1,7 @@
 # OTK Assistant - Makefile
 # Команды для разработки и развертывания
 
-.PHONY: help install dev build run stop logs clean test lint format db-migrate db-reset db-backup db-export ollama-setup ollama-test ollama-pull
+.PHONY: help install dev build run stop logs clean test lint format db-migrate db-reset db-backup db-export ollama-setup ollama-test ollama-pull health check-status
 
 # Переменные
 PYTHON := python
@@ -156,6 +156,10 @@ setup: setup-dirs setup-env install ## Полная настройка прое�
 # МОНИТОРИНГ И ДИАГНОСТИКА
 # =============================================================================
 
+health: ## Проверка health check endpoint
+	@echo "$(GREEN)Проверка health check...$(NC)"
+	@curl -s http://localhost:8000/health | python -m json.tool || echo "$(RED)❌ Health check недоступен$(NC)"
+
 check-ollama: ## Проверка статуса Ollama
 	@echo "$(GREEN)Проверка Ollama...$(NC)"
 	@curl -s http://localhost:11434/api/tags > /dev/null && echo "$(GREEN)✅ Ollama доступен$(NC)" || echo "$(RED)❌ Ollama недоступен$(NC)"
@@ -168,7 +172,7 @@ check-config: ## Проверка конфигурации
 	@echo "$(GREEN)Проверка конфигурации...$(NC)"
 	@$(PYTHON) -c "from app.core.config import settings; print(f'Провайдер: {settings.llm_provider}'); print(f'Модель: {settings.text_model}'); print(f'Ollama URL: {settings.ollama_base_url}')"
 
-status: check-ollama check-model check-config ## Полная проверка статуса системы
+check-status: check-ollama check-model check-config health ## Полная проверка статуса системы
 
 # =============================================================================
 # РАЗРАБОТКА

@@ -1,0 +1,42 @@
+# Railway конфигурация для OTK Assistant
+# Этот файл используется для настройки развертывания в Railway
+
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "python app/main.py"
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+# Переменные окружения для продакшна
+[deploy.variables]
+# Основные настройки
+LOG_LEVEL = "INFO"
+LOG_CONSOLE = "true"
+LOG_CONSOLE_FORMAT = "json"
+
+# Провайдеры (настройте в Railway dashboard)
+LLM_PROVIDER = "openrouter"
+TEXT_MODEL = "openai/gpt-4o-mini"
+VISION_PROVIDER = "openrouter"
+VISION_MODEL = "openai/gpt-4o"
+SPEECH_PROVIDER = "whisperapi"
+SPEECH_MODEL = "large-v2"
+
+# Сетевые параметры
+HTTP_TIMEOUT_SEC = "30"
+HTTP_RETRIES = "3"
+HTTP_RETRY_BACKOFF_SEC = "2"
+
+# Ограничения медиа
+MAX_IMAGE_MB = "20"
+MAX_IMAGE_RES = "2048x2048"
+MAX_AUDIO_MB = "25"
+MAX_AUDIO_MIN = "25"
+
+# Таймауты
+SESSION_TIMEOUT_MIN = "15"
