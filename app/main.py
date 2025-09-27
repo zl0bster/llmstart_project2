@@ -2,18 +2,24 @@
 
 import asyncio
 import logging
+import os
 import sys
 from pathlib import Path
 
-from aiogram import Bot, Dispatcher
-from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
-from aiohttp import web
+try:
+    from aiogram import Bot, Dispatcher
+    from aiogram.client.default import DefaultBotProperties
+    from aiogram.enums import ParseMode
+    from aiohttp import web
 
-from app.core.config import settings
-from app.core.database import init_database
-from app.bot.handlers import command_handlers, text_handlers, voice_handlers, photo_handlers
-from app.health import create_health_app
+    from app.core.config import settings
+    from app.core.database import init_database
+    from app.bot.handlers import command_handlers, text_handlers, voice_handlers, photo_handlers
+    from app.health import create_health_app
+except ImportError as e:
+    print(f"❌ Ошибка импорта: {e}")
+    print("Проверьте установку зависимостей: pip install -r requirements.txt")
+    sys.exit(1)
 
 
 def setup_logging() -> None:
@@ -61,6 +67,17 @@ async def main() -> None:
         # Настройка логирования
         setup_logging()
         
+        # Проверка переменных окружения
+        logging.info("Проверка конфигурации...")
+        if not settings.bot_token:
+            logging.error("BOT_TOKEN не настроен! Проверьте переменные окружения.")
+            sys.exit(1)
+        logging.info("BOT_TOKEN настроен корректно")
+        
+        # Проверка порта
+        port = int(os.environ.get("PORT", 8000))
+        logging.info(f"Используется порт: {port}")
+        
         # Инициализация базы данных
         logging.info("Инициализация базы данных...")
         init_database()
@@ -86,10 +103,10 @@ async def main() -> None:
         # Запуск health check сервера (запускаем раньше для Railway)
         health_runner = web.AppRunner(health_app)
         await health_runner.setup()
-        health_site = web.TCPSite(health_runner, '0.0.0.0', 8000)
+        health_site = web.TCPSite(health_runner, '0.0.0.0', port)
         await health_site.start()
         
-        logging.info("Health check сервер запущен на порту 8000")
+        logging.info(f"Health check сервер запущен на порту {port}")
         
         # Небольшая задержка для стабилизации health check
         await asyncio.sleep(2)

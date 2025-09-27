@@ -318,6 +318,21 @@ async def railway_health_handler(request: Request) -> Response:
     }, status=200)
 
 
+async def debug_handler(request: Request) -> Response:
+    """Отладочный endpoint для диагностики."""
+    import os
+    return web.json_response({
+        "status": "debug",
+        "environment": {
+            "PORT": os.environ.get("PORT", "8000"),
+            "BOT_TOKEN_SET": bool(os.environ.get("BOT_TOKEN")),
+            "DATABASE_URL": os.environ.get("DATABASE_URL", "sqlite:///data/otk_assistant.db"),
+            "LOG_LEVEL": os.environ.get("LOG_LEVEL", "INFO")
+        },
+        "timestamp": datetime.utcnow().isoformat()
+    }, status=200)
+
+
 def create_health_app() -> web.Application:
     """Создание приложения для health check."""
     app = web.Application()
@@ -325,4 +340,5 @@ def create_health_app() -> web.Application:
     app.router.add_get("/health/simple", simple_health_handler)
     app.router.add_get("/", railway_health_handler)  # Railway часто проверяет корневой путь
     app.router.add_get("/health/railway", railway_health_handler)
+    app.router.add_get("/debug", debug_handler)  # Отладочный endpoint
     return app

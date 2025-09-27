@@ -59,13 +59,14 @@ ENV LOG_LEVEL=INFO
 ENV LOG_DIR=logs/
 ENV CACHE_DIR=cache/
 ENV DATABASE_URL=sqlite:///data/otk_assistant.db
+ENV PORT=8000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8000/health/simple', timeout=5)" || exit 1
+    CMD python -c "import requests; requests.get('http://localhost:${PORT:-8000}/health/simple', timeout=5)" || exit 1
 
-# Открытие порта (если потребуется для health check)
-EXPOSE 8000
+# Открытие порта (Railway автоматически определяет порт)
+EXPOSE $PORT
 
 # Команда запуска
 CMD ["python", "app/main.py"]

@@ -17,6 +17,9 @@ restartPolicyMaxRetries = 10
 # ОБЯЗАТЕЛЬНЫЕ НАСТРОЙКИ - настройте в Railway dashboard
 # BOT_TOKEN = "your_telegram_bot_token_here"
 
+# Порт (Railway автоматически устанавливает)
+PORT = "8000"
+
 # Основные настройки
 LOG_LEVEL = "INFO"
 LOG_CONSOLE = "true"
