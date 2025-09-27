@@ -83,13 +83,17 @@ async def main() -> None:
         # Создание health check приложения
         health_app = create_health_app()
         
-        # Запуск health check сервера
+        # Запуск health check сервера (запускаем раньше для Railway)
         health_runner = web.AppRunner(health_app)
         await health_runner.setup()
         health_site = web.TCPSite(health_runner, '0.0.0.0', 8000)
         await health_site.start()
         
         logging.info("Health check сервер запущен на порту 8000")
+        
+        # Небольшая задержка для стабилизации health check
+        await asyncio.sleep(2)
+        
         logging.info("Бот инициализирован, начинаем polling...")
         
         # Запуск бота
@@ -97,12 +101,20 @@ async def main() -> None:
         
     except Exception as e:
         logging.error(f"Ошибка при запуске бота: {e}")
+        logging.exception("Подробности ошибки:")
         sys.exit(1)
     finally:
-        if 'bot' in locals():
-            await bot.session.close()
-        if 'health_runner' in locals():
-            await health_runner.cleanup()
+        try:
+            if 'bot' in locals():
+                await bot.session.close()
+        except Exception as e:
+            logging.error(f"Ошибка при закрытии бота: {e}")
+        
+        try:
+            if 'health_runner' in locals():
+                await health_runner.cleanup()
+        except Exception as e:
+            logging.error(f"Ошибка при закрытии health runner: {e}")
 
 
 if __name__ == "__main__":

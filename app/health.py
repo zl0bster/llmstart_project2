@@ -258,8 +258,64 @@ async def health_check_handler(request: Request) -> Response:
 
 
 async def simple_health_handler(request: Request) -> Response:
-    """Простой health check для Docker."""
-    return web.json_response({"status": "ok"}, status=200)
+    """Простой health check для Railway и Docker."""
+    try:
+        # Быстрая проверка - только то, что критично для запуска
+        import asyncio
+        from concurrent.futures import ThreadPoolExecutor
+        
+        # Проверяем только подключение к БД (быстро)
+        def _quick_db_check():
+            try:
+                with get_db_session() as session:
+                    session.execute(text("SELECT 1"))
+                    return True
+            except Exception:
+                return False
+        
+        # Выполняем проверку БД в отдельном потоке с таймаутом
+        loop = asyncio.get_event_loop()
+        with ThreadPoolExecutor() as executor:
+            db_healthy = await asyncio.wait_for(
+                loop.run_in_executor(executor, _quick_db_check),
+                timeout=5.0
+            )
+        
+        if db_healthy:
+            return web.json_response({
+                "status": "healthy",
+                "timestamp": datetime.utcnow().isoformat(),
+                "message": "Application is running"
+            }, status=200)
+        else:
+            return web.json_response({
+                "status": "unhealthy", 
+                "timestamp": datetime.utcnow().isoformat(),
+                "message": "Database connection failed"
+            }, status=503)
+            
+    except asyncio.TimeoutError:
+        return web.json_response({
+            "status": "unhealthy",
+            "timestamp": datetime.utcnow().isoformat(), 
+            "message": "Health check timeout"
+        }, status=503)
+    except Exception as e:
+        logging.warning(f"Simple health check failed: {e}")
+        return web.json_response({
+            "status": "unhealthy",
+            "timestamp": datetime.utcnow().isoformat(),
+            "message": f"Health check error: {str(e)}"
+        }, status=503)
+
+
+async def railway_health_handler(request: Request) -> Response:
+    """Очень простой health check специально для Railway."""
+    return web.json_response({
+        "status": "ok",
+        "service": "otk-assistant",
+        "timestamp": datetime.utcnow().isoformat()
+    }, status=200)
 
 
 def create_health_app() -> web.Application:
@@ -267,4 +323,6 @@ def create_health_app() -> web.Application:
     app = web.Application()
     app.router.add_get("/health", health_check_handler)
     app.router.add_get("/health/simple", simple_health_handler)
+    app.router.add_get("/", railway_health_handler)  # Railway часто проверяет корневой путь
+    app.router.add_get("/health/railway", railway_health_handler)
     return app
